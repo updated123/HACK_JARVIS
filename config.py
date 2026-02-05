@@ -18,14 +18,22 @@ AZURE_OPENAI_API_VERSION = "2024-02-15-preview"
 # Try Streamlit secrets first (for Streamlit Cloud)
 try:
     import streamlit as st
-    if hasattr(st, 'secrets') and st.secrets:
-        AZURE_OPENAI_ENDPOINT = st.secrets.get("AZURE_OPENAI_ENDPOINT") or st.secrets.get("AZURE_OPENAI_ENDPOINT", None)
-        AZURE_OPENAI_API_KEY = st.secrets.get("AZURE_OPENAI_API_KEY") or st.secrets.get("AZURE_OPENAI_API_KEY", None)
-        if st.secrets.get("AZURE_OPENAI_DEPLOYMENT"):
-            AZURE_OPENAI_DEPLOYMENT = st.secrets.get("AZURE_OPENAI_DEPLOYMENT")
-        if st.secrets.get("AZURE_OPENAI_API_VERSION"):
-            AZURE_OPENAI_API_VERSION = st.secrets.get("AZURE_OPENAI_API_VERSION")
-except (ImportError, AttributeError, KeyError, RuntimeError):
+    if hasattr(st, 'secrets'):
+        # Access secrets directly (Streamlit Cloud format)
+        try:
+            AZURE_OPENAI_ENDPOINT = st.secrets["AZURE_OPENAI_ENDPOINT"]
+            AZURE_OPENAI_API_KEY = st.secrets["AZURE_OPENAI_API_KEY"]
+        except KeyError:
+            pass
+        try:
+            AZURE_OPENAI_DEPLOYMENT = st.secrets["AZURE_OPENAI_DEPLOYMENT"]
+        except KeyError:
+            pass
+        try:
+            AZURE_OPENAI_API_VERSION = st.secrets["AZURE_OPENAI_API_VERSION"]
+        except KeyError:
+            pass
+except (ImportError, AttributeError, RuntimeError):
     pass
 
 # Fall back to environment variables if secrets not found
