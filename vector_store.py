@@ -20,6 +20,12 @@ try:
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
+    # Create a dummy Document class for type hints when langchain is not available
+    from typing import Any
+    class Document:
+        def __init__(self, page_content: str = "", metadata: dict = None):
+            self.page_content = page_content
+            self.metadata = metadata or {}
 
 from config import VECTOR_STORE_PATH
 
