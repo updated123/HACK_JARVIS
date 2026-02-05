@@ -55,7 +55,7 @@ git push -u origin main
 6. Go to "Advanced settings" → "Secrets"
 7. Add these secrets:
    ```
-   AZURE_OPENAI_ENDPOINT=https://aakashopenai.openai.azure.com/
+   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
    AZURE_OPENAI_API_KEY=your-actual-api-key
    AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
    AZURE_OPENAI_API_VERSION=2024-02-15-preview
