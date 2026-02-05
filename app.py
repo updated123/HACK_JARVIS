@@ -8,18 +8,26 @@ import json
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Try to import LangGraph version, fallback to simple version
+JARVIS_AVAILABLE = False
+JarvisAgent = None
 try:
     from jarvis_graph import JarvisAgent
     JARVIS_AVAILABLE = True
-except (ImportError, Exception) as e:
-    print(f"Warning: Could not import LangGraph version: {e}")
-    print("Falling back to simplified version...")
-    try:
-        from jarvis_simple import JarvisAgentSimple as JarvisAgent
-        JARVIS_AVAILABLE = True
-    except ImportError:
+except (ImportError, ValueError, Exception) as e:
+    error_msg = str(e)
+    if "Azure OpenAI credentials" in error_msg or "AZURE_OPENAI" in error_msg:
+        # Credentials missing - this will be handled in initialize_agent
         JARVIS_AVAILABLE = False
-        print("Error: Could not import any Jarvis agent version")
+        JarvisAgent = None
+    else:
+        print(f"Warning: Could not import LangGraph version: {e}")
+        print("Falling back to simplified version...")
+        try:
+            from jarvis_simple import JarvisAgentSimple as JarvisAgent
+            JARVIS_AVAILABLE = True
+        except ImportError:
+            JARVIS_AVAILABLE = False
+            print("Error: Could not import any Jarvis agent version")
 from data_generator import generate_all_clients
 from vector_store import ClientVectorStore
 from compliance_tracker import ComplianceTracker
@@ -108,10 +116,37 @@ def main():
     
     # Initialize agent
     try:
+        if not JARVIS_AVAILABLE or JarvisAgent is None:
+            st.error("⚠️ Jarvis Agent not available")
+            st.info("**Missing Azure OpenAI Credentials**")
+            st.info("Please set the following environment variables in Streamlit Cloud secrets:")
+            st.code("""
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-api-key-here
+AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+            """)
+            st.info("Go to: Manage app → Settings → Secrets")
+            return
         agent = initialize_agent()
+    except ValueError as e:
+        error_msg = str(e)
+        if "Azure OpenAI credentials" in error_msg or "AZURE_OPENAI" in error_msg:
+            st.error("⚠️ Missing Azure OpenAI Credentials")
+            st.info("Please set the following environment variables in Streamlit Cloud secrets:")
+            st.code("""
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-api-key-here
+AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+            """)
+            st.info("Go to: Manage app → Settings → Secrets")
+        else:
+            st.error(f"Error initializing Jarvis: {e}")
+        return
     except Exception as e:
         st.error(f"Error initializing Jarvis: {e}")
-        st.info("Make sure you have set OPENAI_API_KEY in your .env file")
+        st.info("Make sure you have set Azure OpenAI credentials in Streamlit Cloud secrets")
         if "langgraph" in str(e).lower() or "checkpoint" in str(e).lower():
             st.info("💡 Tip: The system will automatically use a simplified version if LangGraph has issues.")
         return
