@@ -10,19 +10,33 @@ except Exception:
     pass
 
 # Try to get secrets from Streamlit Cloud first, then fall back to environment variables
+AZURE_OPENAI_ENDPOINT = None
+AZURE_OPENAI_API_KEY = None
+AZURE_OPENAI_DEPLOYMENT = "gpt-4o-mini"
+AZURE_OPENAI_API_VERSION = "2024-02-15-preview"
+
+# Try Streamlit secrets first (for Streamlit Cloud)
 try:
     import streamlit as st
-    # Streamlit Cloud - get from secrets
-    AZURE_OPENAI_ENDPOINT = st.secrets.get("AZURE_OPENAI_ENDPOINT")
-    AZURE_OPENAI_API_KEY = st.secrets.get("AZURE_OPENAI_API_KEY")
-    AZURE_OPENAI_DEPLOYMENT = st.secrets.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
-    AZURE_OPENAI_API_VERSION = st.secrets.get("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
-except (ImportError, AttributeError, KeyError):
-    # Local development - get from environment variables
+    if hasattr(st, 'secrets') and st.secrets:
+        AZURE_OPENAI_ENDPOINT = st.secrets.get("AZURE_OPENAI_ENDPOINT") or st.secrets.get("AZURE_OPENAI_ENDPOINT", None)
+        AZURE_OPENAI_API_KEY = st.secrets.get("AZURE_OPENAI_API_KEY") or st.secrets.get("AZURE_OPENAI_API_KEY", None)
+        if st.secrets.get("AZURE_OPENAI_DEPLOYMENT"):
+            AZURE_OPENAI_DEPLOYMENT = st.secrets.get("AZURE_OPENAI_DEPLOYMENT")
+        if st.secrets.get("AZURE_OPENAI_API_VERSION"):
+            AZURE_OPENAI_API_VERSION = st.secrets.get("AZURE_OPENAI_API_VERSION")
+except (ImportError, AttributeError, KeyError, RuntimeError):
+    pass
+
+# Fall back to environment variables if secrets not found
+if not AZURE_OPENAI_ENDPOINT:
     AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-    AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
-    AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+if not AZURE_OPENAI_API_KEY:
     AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+if AZURE_OPENAI_DEPLOYMENT == "gpt-4o-mini":  # Only use default if not set
+    AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
+if AZURE_OPENAI_API_VERSION == "2024-02-15-preview":  # Only use default if not set
+    AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
 
 if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_API_KEY:
     raise ValueError(
