@@ -9,16 +9,26 @@ except Exception:
     # If .env file can't be loaded, continue with defaults
     pass
 
-# Azure OpenAI Configuration
-# All credentials must be set via environment variables for security
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
-AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+# Try to get secrets from Streamlit Cloud first, then fall back to environment variables
+try:
+    import streamlit as st
+    # Streamlit Cloud - get from secrets
+    AZURE_OPENAI_ENDPOINT = st.secrets.get("AZURE_OPENAI_ENDPOINT")
+    AZURE_OPENAI_API_KEY = st.secrets.get("AZURE_OPENAI_API_KEY")
+    AZURE_OPENAI_DEPLOYMENT = st.secrets.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
+    AZURE_OPENAI_API_VERSION = st.secrets.get("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+except (ImportError, AttributeError, KeyError):
+    # Local development - get from environment variables
+    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+    AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
+    AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+    AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 
 if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_API_KEY:
     raise ValueError(
-        "Azure OpenAI credentials not found. Please set the following environment variables:\n"
+        "Azure OpenAI credentials not found. Please set the following:\n"
+        "For Streamlit Cloud: Add secrets in app settings\n"
+        "For local development: Set environment variables:\n"
         "- AZURE_OPENAI_ENDPOINT\n"
         "- AZURE_OPENAI_API_KEY\n"
         "Optional:\n"
