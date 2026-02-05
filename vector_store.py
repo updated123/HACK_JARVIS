@@ -246,7 +246,7 @@ Topics Discussed:
         
         return text
     
-    def _calculate_relevance_score(self, query: str, document: Document) -> float:
+    def _calculate_relevance_score(self, query: str, document: "Document") -> float:
         """Calculate relevance score using multiple methods (not just keyword matching)"""
         query_lower = query.lower()
         content_lower = document.page_content.lower()
