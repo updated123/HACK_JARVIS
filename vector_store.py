@@ -305,7 +305,7 @@ Topics Discussed:
         
         return total_score
     
-    def search(self, query: str, k: int = 5, filter_dict: Dict = None) -> List[Document]:
+    def search(self, query: str, k: int = 5, filter_dict: Dict = None) -> List["Document"]:
         """Search for relevant client information using improved scoring"""
         if not self.documents:
             return []
@@ -327,7 +327,7 @@ Topics Discussed:
         scored_docs.sort(key=lambda x: x[0], reverse=True)
         return [doc for _, doc in scored_docs[:k]]
     
-    def search_by_client(self, client_name: str, query: str = None, k: int = 10) -> List[Document]:
+    def search_by_client(self, client_name: str, query: str = None, k: int = 10) -> List["Document"]:
         """Search for information about a specific client"""
         if query:
             search_query = f"{client_name} {query}"
