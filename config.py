@@ -65,20 +65,20 @@ def get_azure_openai_config():
     return endpoint, api_key, deployment, api_version
 
 # Get configuration (will be called after Streamlit is initialized)
+# Don't initialize at import time - wait for explicit initialization
 AZURE_OPENAI_ENDPOINT = None
 AZURE_OPENAI_API_KEY = None
 AZURE_OPENAI_DEPLOYMENT = "gpt-4o-mini"
 AZURE_OPENAI_API_VERSION = "2024-02-15-preview"
 
-# Try to initialize immediately (for non-Streamlit contexts)
-try:
-    AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT, AZURE_OPENAI_API_VERSION = get_azure_openai_config()
-except (ImportError, AttributeError, RuntimeError):
-    # If Streamlit not available, try environment variables
-    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-    AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-    AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
-    AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+# Try to initialize from environment variables only (for non-Streamlit contexts)
+# Streamlit secrets will be loaded later in app.py
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+if os.getenv("AZURE_OPENAI_DEPLOYMENT"):
+    AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+if os.getenv("AZURE_OPENAI_API_VERSION"):
+    AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
 
 # Vector Store Configuration
 VECTOR_STORE_PATH = "./chroma_db"

@@ -36,9 +36,15 @@ from config import ADVISOR_NAME, get_azure_openai_config
 # Initialize Azure OpenAI config from Streamlit secrets (after Streamlit is initialized)
 import config
 try:
-    config.AZURE_OPENAI_ENDPOINT, config.AZURE_OPENAI_API_KEY, config.AZURE_OPENAI_DEPLOYMENT, config.AZURE_OPENAI_API_VERSION = get_azure_openai_config()
-except Exception:
-    pass  # Will be handled when JarvisAgent tries to initialize
+    endpoint, api_key, deployment, api_version = get_azure_openai_config()
+    config.AZURE_OPENAI_ENDPOINT = endpoint
+    config.AZURE_OPENAI_API_KEY = api_key
+    config.AZURE_OPENAI_DEPLOYMENT = deployment
+    config.AZURE_OPENAI_API_VERSION = api_version
+except Exception as e:
+    # If secrets not available, config will use environment variables
+    # This is fine - will be checked when JarvisAgent initializes
+    pass
 
 
 # Page config
