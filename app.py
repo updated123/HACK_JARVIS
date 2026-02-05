@@ -31,7 +31,14 @@ except (ImportError, ValueError, Exception) as e:
 from data_generator import generate_all_clients
 from vector_store import ClientVectorStore
 from compliance_tracker import ComplianceTracker
-from config import ADVISOR_NAME
+from config import ADVISOR_NAME, get_azure_openai_config
+
+# Initialize Azure OpenAI config from Streamlit secrets (after Streamlit is initialized)
+import config
+try:
+    config.AZURE_OPENAI_ENDPOINT, config.AZURE_OPENAI_API_KEY, config.AZURE_OPENAI_DEPLOYMENT, config.AZURE_OPENAI_API_VERSION = get_azure_openai_config()
+except Exception:
+    pass  # Will be handled when JarvisAgent tries to initialize
 
 
 # Page config
