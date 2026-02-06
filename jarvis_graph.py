@@ -1,6 +1,16 @@
 """LangGraph workflow for Jarvis proactive chatbot"""
 from typing import TypedDict, Annotated, Sequence
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+# Try new import path first, fallback to old path
+try:
+    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+except ImportError:
+    try:
+        from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+    except ImportError:
+        # Last resort: try langchain.chat_models
+        from langchain_core.prompts.chat import ChatPromptTemplate
+        MessagesPlaceholder = None  # Will handle this separately if needed
+
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import Tool, StructuredTool
 from datetime import datetime
