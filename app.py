@@ -150,14 +150,30 @@ def main():
         if not JARVIS_AVAILABLE or JarvisAgent is None:
             st.error("⚠️ Jarvis Agent not available")
             st.info("**Missing Azure OpenAI Credentials**")
-            st.info("Please set the following environment variables in Streamlit Cloud secrets:")
+            
+            # Debug: Show what secrets are available
+            if hasattr(st, 'secrets') and st.secrets:
+                with st.expander("🔍 Debug: Check Secrets (Click to expand)"):
+                    st.write("**Available secrets keys:**")
+                    try:
+                        if isinstance(st.secrets, dict):
+                            st.write(list(st.secrets.keys()))
+                        else:
+                            st.write("Secrets object type:", type(st.secrets))
+                            # Try to list attributes
+                            attrs = [attr for attr in dir(st.secrets) if not attr.startswith('_')]
+                            st.write("Secrets attributes:", attrs)
+                    except Exception as e:
+                        st.write(f"Error checking secrets: {e}")
+            
+            st.info("Please set the following secrets in Streamlit Cloud:")
             st.code("""
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-api-key-here
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_ENDPOINT = "https://your-resource.openai.azure.com/"
+AZURE_OPENAI_API_KEY = "your-api-key-here"
+AZURE_OPENAI_DEPLOYMENT = "gpt-4o-mini"
+AZURE_OPENAI_API_VERSION = "2024-02-15-preview"
             """)
-            st.info("Go to: Manage app → Settings → Secrets")
+            st.info("**Format:** Use TOML format with `=` and quotes. Go to: Manage app → Settings → Secrets")
             return
         agent = initialize_agent()
     except ValueError as e:
