@@ -245,6 +245,32 @@ async def search_clients(query: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error searching: {str(e)}")
 
+# API documentation endpoint
+@app.get("/docs")
+async def docs():
+    """Redirect to FastAPI docs"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
+
+# List all available endpoints
+@app.get("/api")
+async def api_info():
+    """List all available API endpoints"""
+    return {
+        "service": "Jarvis API",
+        "version": "1.0.0",
+        "endpoints": {
+            "GET /": "Root endpoint - service status",
+            "GET /health": "Health check with detailed status",
+            "GET /docs": "Interactive API documentation (Swagger UI)",
+            "GET /redoc": "Alternative API documentation (ReDoc)",
+            "POST /api/chat": "Chat with Jarvis (requires: {message: string})",
+            "GET /api/briefing": "Get daily briefing",
+            "POST /api/search": "Search clients (query parameter: query=string)"
+        },
+        "agent_ready": jarvis_agent is not None
+    }
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
