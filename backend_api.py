@@ -24,11 +24,12 @@ app.add_middleware(
 # Initialize Jarvis Agent
 jarvis_agent = None
 compliance_tracker = None
+init_error_message = None
 
 def initialize_backend():
     """Initialize backend services"""
-    global jarvis_agent, compliance_tracker
-    init_errors = []
+    global jarvis_agent, compliance_tracker, init_error_message
+    init_error_message = None
     
     try:
         # Step 1: Set credentials FIRST (before any imports that use config)
@@ -99,21 +100,21 @@ def initialize_backend():
     except ValueError as e:
         error_msg = f"Configuration Error: {str(e)}"
         print(f"❌ {error_msg}")
-        init_errors.append(error_msg)
+        init_error_message = error_msg
         import traceback
         traceback.print_exc()
         return False
     except ImportError as e:
         error_msg = f"Import Error: {str(e)}"
         print(f"❌ {error_msg}")
-        init_errors.append(error_msg)
+        init_error_message = error_msg
         import traceback
         traceback.print_exc()
         return False
     except Exception as e:
         error_msg = f"Initialization Error: {str(e)}"
         print(f"❌ {error_msg}")
-        init_errors.append(error_msg)
+        init_error_message = error_msg
         import traceback
         traceback.print_exc()
         return False
@@ -186,14 +187,45 @@ async def health():
     }
     status["files"] = files
     
+    # Add error message if initialization failed
+    if init_error_message:
+        status["initialization_error"] = init_error_message
+    
     return status
+
+@app.post("/api/reinitialize")
+async def reinitialize():
+    """Manually retry backend initialization"""
+    global jarvis_agent, compliance_tracker, init_error_message
+    print("=" * 60)
+    print("Manual reinitialization requested...")
+    print("=" * 60)
+    success = initialize_backend()
+    if success:
+        return {
+            "status": "success",
+            "message": "Backend reinitialized successfully",
+            "agent_ready": jarvis_agent is not None
+        }
+    else:
+        return {
+            "status": "failed",
+            "message": "Reinitialization failed",
+            "error": init_error_message,
+            "agent_ready": jarvis_agent is not None
+        }
 
 # Chat endpoint
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Chat with Jarvis"""
     if not jarvis_agent:
-        raise HTTPException(status_code=503, detail="Jarvis agent not initialized")
+        error_detail = "Jarvis agent not initialized"
+        if init_error_message:
+            error_detail += f". Error: {init_error_message}"
+        else:
+            error_detail += ". Check /health endpoint for details. Try POST /api/reinitialize to retry."
+        raise HTTPException(status_code=503, detail=error_detail)
     
     try:
         response = jarvis_agent.chat(request.message)
@@ -244,32 +276,6 @@ async def search_clients(query: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error searching: {str(e)}")
-
-# API documentation endpoint
-@app.get("/docs")
-async def docs():
-    """Redirect to FastAPI docs"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/docs")
-
-# List all available endpoints
-@app.get("/api")
-async def api_info():
-    """List all available API endpoints"""
-    return {
-        "service": "Jarvis API",
-        "version": "1.0.0",
-        "endpoints": {
-            "GET /": "Root endpoint - service status",
-            "GET /health": "Health check with detailed status",
-            "GET /docs": "Interactive API documentation (Swagger UI)",
-            "GET /redoc": "Alternative API documentation (ReDoc)",
-            "POST /api/chat": "Chat with Jarvis (requires: {message: string})",
-            "GET /api/briefing": "Get daily briefing",
-            "POST /api/search": "Search clients (query parameter: query=string)"
-        },
-        "agent_ready": jarvis_agent is not None
-    }
 
 if __name__ == "__main__":
     import uvicorn
