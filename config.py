@@ -10,87 +10,70 @@ except Exception:
     pass
 
 def get_azure_openai_config():
-    """Get Azure OpenAI configuration from Streamlit secrets or environment variables"""
+    """Get Azure OpenAI configuration - tries multiple methods"""
     endpoint = None
     api_key = None
     deployment = "gpt-4o-mini"
     api_version = "2024-02-15-preview"
     
-    # Try Streamlit secrets first (for Streamlit Cloud)
-    try:
-        import streamlit as st
-        if hasattr(st, 'secrets') and st.secrets is not None:
-            secrets = st.secrets
-            # Try multiple access methods
-            # Method 1: Direct dictionary access with []
-            try:
-                if "AZURE_OPENAI_ENDPOINT" in secrets:
-                    endpoint = secrets["AZURE_OPENAI_ENDPOINT"]
-                if "AZURE_OPENAI_API_KEY" in secrets:
-                    api_key = secrets["AZURE_OPENAI_API_KEY"]
-                if "AZURE_OPENAI_DEPLOYMENT" in secrets:
-                    deployment = secrets["AZURE_OPENAI_DEPLOYMENT"]
-                if "AZURE_OPENAI_API_VERSION" in secrets:
-                    api_version = secrets["AZURE_OPENAI_API_VERSION"]
-            except (KeyError, TypeError):
-                pass
-            
-            # Method 2: Try .get() method
-            if not endpoint:
-                try:
-                    endpoint = secrets.get("AZURE_OPENAI_ENDPOINT")
-                except (AttributeError, TypeError):
-                    pass
-            if not api_key:
-                try:
-                    api_key = secrets.get("AZURE_OPENAI_API_KEY")
-                except (AttributeError, TypeError):
-                    pass
-            
-            # Method 3: Attribute access (Streamlit secrets object)
-            if not endpoint:
-                try:
-                    endpoint = getattr(secrets, 'AZURE_OPENAI_ENDPOINT', None)
-                except (AttributeError, TypeError):
-                    pass
-            if not api_key:
-                try:
-                    api_key = getattr(secrets, 'AZURE_OPENAI_API_KEY', None)
-                except (AttributeError, TypeError):
-                    pass
-            if deployment == "gpt-4o-mini":
-                try:
-                    deployment = getattr(secrets, 'AZURE_OPENAI_DEPLOYMENT', deployment)
-                except (AttributeError, TypeError):
-                    pass
-            if api_version == "2024-02-15-preview":
-                try:
-                    api_version = getattr(secrets, 'AZURE_OPENAI_API_VERSION', api_version)
-                except (AttributeError, TypeError):
-                    pass
-    except (ImportError, AttributeError, RuntimeError, Exception):
-        pass
+    # Method 1: Try environment variables first (works everywhere)
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    if os.getenv("AZURE_OPENAI_DEPLOYMENT"):
+        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+    if os.getenv("AZURE_OPENAI_API_VERSION"):
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION")
     
-    # Fall back to environment variables if secrets not found
-    if not endpoint:
-        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    if not api_key:
-        api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    if deployment == "gpt-4o-mini":
-        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", deployment)
-    if api_version == "2024-02-15-preview":
-        api_version = os.getenv("AZURE_OPENAI_API_VERSION", api_version)
+    # Method 2: Try Streamlit secrets (for Streamlit Cloud)
+    if not endpoint or not api_key:
+        try:
+            import streamlit as st
+            if hasattr(st, 'secrets') and st.secrets:
+                secrets = st.secrets
+                # Try all access patterns
+                patterns = [
+                    lambda: secrets.get("AZURE_OPENAI_ENDPOINT") if hasattr(secrets, 'get') else None,
+                    lambda: secrets["AZURE_OPENAI_ENDPOINT"] if "AZURE_OPENAI_ENDPOINT" in secrets else None,
+                    lambda: getattr(secrets, 'AZURE_OPENAI_ENDPOINT', None),
+                ]
+                for pattern in patterns:
+                    try:
+                        if not endpoint:
+                            endpoint = pattern()
+                        if endpoint:
+                            break
+                    except:
+                        continue
+                
+                patterns_key = [
+                    lambda: secrets.get("AZURE_OPENAI_API_KEY") if hasattr(secrets, 'get') else None,
+                    lambda: secrets["AZURE_OPENAI_API_KEY"] if "AZURE_OPENAI_API_KEY" in secrets else None,
+                    lambda: getattr(secrets, 'AZURE_OPENAI_API_KEY', None),
+                ]
+                for pattern in patterns_key:
+                    try:
+                        if not api_key:
+                            api_key = pattern()
+                        if api_key:
+                            break
+                    except:
+                        continue
+        except Exception:
+            pass
     
     if not endpoint or not api_key:
         raise ValueError(
-            "Azure OpenAI credentials not found. Please set the following:\n"
-            "For Streamlit Cloud: Add secrets in app settings\n"
-            "For local development: Set environment variables:\n"
-            "- AZURE_OPENAI_ENDPOINT\n"
-            "- AZURE_OPENAI_API_KEY\n"
-            "Optional:\n"
-            "- AZURE_OPENAI_DEPLOYMENT (default: gpt-4o-mini)\n"
-            "- AZURE_OPENAI_API_VERSION (default: 2024-02-15-preview)"
+            "Azure OpenAI credentials not found.\n\n"
+            "**For Streamlit Cloud:**\n"
+            "1. Go to: Manage app → Settings → Secrets\n"
+            "2. Add these as environment variables (not TOML):\n"
+            "   - Name: AZURE_OPENAI_ENDPOINT, Value: https://your-resource.openai.azure.com/\n"
+            "   - Name: AZURE_OPENAI_API_KEY, Value: your-api-key\n"
+            "3. Or use TOML format in Secrets:\n"
+            "   AZURE_OPENAI_ENDPOINT = \"https://your-resource.openai.azure.com/\"\n"
+            "   AZURE_OPENAI_API_KEY = \"your-api-key\"\n\n"
+            "**For local development:**\n"
+            "Set environment variables or use .env file"
         )
     
     return endpoint, api_key, deployment, api_version

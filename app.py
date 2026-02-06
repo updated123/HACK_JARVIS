@@ -1,6 +1,7 @@
 """Streamlit web interface for AdvisoryAI Jarvis"""
 import streamlit as st
 import sys
+import os
 from pathlib import Path
 import json
 
