@@ -31,6 +31,14 @@ def initialize_backend():
     try:
         from jarvis_graph import JarvisAgent
         from compliance_tracker import ComplianceTracker
+        from data_generator import generate_all_clients
+        
+        # Generate mock data if needed
+        data_file = Path("mock_data.json")
+        if not data_file.exists():
+            print("Generating mock data...")
+            generate_all_clients()
+            print("Mock data generated successfully")
         
         # Set credentials from environment variables (Render sets these)
         import config
@@ -41,9 +49,12 @@ def initialize_backend():
         
         jarvis_agent = JarvisAgent()
         compliance_tracker = ComplianceTracker()
+        print("Backend initialized successfully")
         return True
     except Exception as e:
         print(f"Error initializing backend: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 # Initialize on startup
