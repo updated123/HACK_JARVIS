@@ -19,31 +19,56 @@ def get_azure_openai_config():
     # Try Streamlit secrets first (for Streamlit Cloud)
     try:
         import streamlit as st
-        if hasattr(st, 'secrets'):
+        if hasattr(st, 'secrets') and st.secrets is not None:
             secrets = st.secrets
-            # Try to access secrets - Streamlit secrets can be accessed as dict or attributes
+            # Try multiple access methods
+            # Method 1: Direct dictionary access with []
             try:
-                # Method 1: Direct dictionary access
-                if isinstance(secrets, dict):
-                    endpoint = secrets.get("AZURE_OPENAI_ENDPOINT") or secrets.get("AZURE_OPENAI_ENDPOINT")
-                    api_key = secrets.get("AZURE_OPENAI_API_KEY") or secrets.get("AZURE_OPENAI_API_KEY")
-                    if "AZURE_OPENAI_DEPLOYMENT" in secrets:
-                        deployment = secrets["AZURE_OPENAI_DEPLOYMENT"]
-                    if "AZURE_OPENAI_API_VERSION" in secrets:
-                        api_version = secrets["AZURE_OPENAI_API_VERSION"]
-                else:
-                    # Method 2: Attribute access (Streamlit secrets object)
-                    if hasattr(secrets, 'AZURE_OPENAI_ENDPOINT'):
-                        endpoint = secrets.AZURE_OPENAI_ENDPOINT
-                    if hasattr(secrets, 'AZURE_OPENAI_API_KEY'):
-                        api_key = secrets.AZURE_OPENAI_API_KEY
-                    if hasattr(secrets, 'AZURE_OPENAI_DEPLOYMENT'):
-                        deployment = secrets.AZURE_OPENAI_DEPLOYMENT
-                    if hasattr(secrets, 'AZURE_OPENAI_API_VERSION'):
-                        api_version = secrets.AZURE_OPENAI_API_VERSION
-            except (KeyError, TypeError, AttributeError):
+                if "AZURE_OPENAI_ENDPOINT" in secrets:
+                    endpoint = secrets["AZURE_OPENAI_ENDPOINT"]
+                if "AZURE_OPENAI_API_KEY" in secrets:
+                    api_key = secrets["AZURE_OPENAI_API_KEY"]
+                if "AZURE_OPENAI_DEPLOYMENT" in secrets:
+                    deployment = secrets["AZURE_OPENAI_DEPLOYMENT"]
+                if "AZURE_OPENAI_API_VERSION" in secrets:
+                    api_version = secrets["AZURE_OPENAI_API_VERSION"]
+            except (KeyError, TypeError):
                 pass
-    except (ImportError, AttributeError, RuntimeError):
+            
+            # Method 2: Try .get() method
+            if not endpoint:
+                try:
+                    endpoint = secrets.get("AZURE_OPENAI_ENDPOINT")
+                except (AttributeError, TypeError):
+                    pass
+            if not api_key:
+                try:
+                    api_key = secrets.get("AZURE_OPENAI_API_KEY")
+                except (AttributeError, TypeError):
+                    pass
+            
+            # Method 3: Attribute access (Streamlit secrets object)
+            if not endpoint:
+                try:
+                    endpoint = getattr(secrets, 'AZURE_OPENAI_ENDPOINT', None)
+                except (AttributeError, TypeError):
+                    pass
+            if not api_key:
+                try:
+                    api_key = getattr(secrets, 'AZURE_OPENAI_API_KEY', None)
+                except (AttributeError, TypeError):
+                    pass
+            if deployment == "gpt-4o-mini":
+                try:
+                    deployment = getattr(secrets, 'AZURE_OPENAI_DEPLOYMENT', deployment)
+                except (AttributeError, TypeError):
+                    pass
+            if api_version == "2024-02-15-preview":
+                try:
+                    api_version = getattr(secrets, 'AZURE_OPENAI_API_VERSION', api_version)
+                except (AttributeError, TypeError):
+                    pass
+    except (ImportError, AttributeError, RuntimeError, Exception):
         pass
     
     # Fall back to environment variables if secrets not found

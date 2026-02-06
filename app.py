@@ -127,6 +127,24 @@ def main():
     st.markdown('<p class="main-header">🤖 AdvisoryAI Jarvis</p>', unsafe_allow_html=True)
     st.markdown(f'<p class="sub-header">Proactive Assistant for {ADVISOR_NAME}</p>', unsafe_allow_html=True)
     
+    # Try to initialize config from Streamlit secrets here (after Streamlit is initialized)
+    try:
+        endpoint, api_key, deployment, api_version = get_azure_openai_config()
+        config.AZURE_OPENAI_ENDPOINT = endpoint
+        config.AZURE_OPENAI_API_KEY = api_key
+        config.AZURE_OPENAI_DEPLOYMENT = deployment
+        config.AZURE_OPENAI_API_VERSION = api_version
+        # Now try to import JarvisAgent again if it failed before
+        if not JARVIS_AVAILABLE or JarvisAgent is None:
+            try:
+                from jarvis_graph import JarvisAgent
+                global JARVIS_AVAILABLE
+                JARVIS_AVAILABLE = True
+            except Exception as e:
+                pass
+    except Exception as e:
+        pass  # Will show error below
+    
     # Initialize agent
     try:
         if not JARVIS_AVAILABLE or JarvisAgent is None:
