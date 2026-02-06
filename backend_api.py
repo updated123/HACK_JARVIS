@@ -60,12 +60,15 @@ class ChatResponse(BaseModel):
     status: str
 
 class BriefingResponse(BaseModel):
+    date: str
     summary: dict
     reviews_due: list
+    contact_gaps: list
     upcoming_milestones: list
     life_events: list
     unresolved_concerns: list
     overdue_actions: list
+    overdue_follow_ups: list
 
 # Health check
 @app.get("/")
@@ -106,12 +109,15 @@ async def get_briefing():
     try:
         briefing = compliance_tracker.get_daily_briefing()
         return BriefingResponse(
+            date=briefing.get("date", ""),
             summary=briefing.get("summary", {}),
             reviews_due=briefing.get("reviews_due", []),
+            contact_gaps=briefing.get("contact_gaps", []),
             upcoming_milestones=briefing.get("upcoming_milestones", []),
             life_events=briefing.get("life_events", []),
             unresolved_concerns=briefing.get("unresolved_concerns", []),
-            overdue_actions=briefing.get("overdue_actions", [])
+            overdue_actions=briefing.get("overdue_actions", []),
+            overdue_follow_ups=briefing.get("overdue_follow_ups", [])
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting briefing: {str(e)}")
