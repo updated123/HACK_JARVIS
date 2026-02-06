@@ -89,6 +89,10 @@ def initialize_backend():
         # Step 5: Initialize JarvisAgent (now that everything is ready)
         from jarvis_graph import JarvisAgent
         print("Initializing JarvisAgent...")
+        print(f"  - Endpoint: {config.AZURE_OPENAI_ENDPOINT[:50]}...")
+        print(f"  - Deployment: {config.AZURE_OPENAI_DEPLOYMENT}")
+        print(f"  - API Version: {config.AZURE_OPENAI_API_VERSION}")
+        print(f"  - API Key: {'set' if config.AZURE_OPENAI_API_KEY else 'missing'} ({len(config.AZURE_OPENAI_API_KEY) if config.AZURE_OPENAI_API_KEY else 0} chars)")
         jarvis_agent = JarvisAgent()
         print("✓ JarvisAgent initialized successfully")
         
@@ -190,6 +194,31 @@ async def health():
     # Add error message if initialization failed
     if init_error_message:
         status["initialization_error"] = init_error_message
+    elif not jarvis_agent:
+        status["initialization_error"] = "Unknown error - check Render logs for details"
+    
+    # Try to get more details about why agent failed
+    if not jarvis_agent:
+        # Check if we can import the module
+        try:
+            from jarvis_graph import JarvisAgent as TestAgent
+            status["jarvis_import"] = "success"
+        except ImportError as e:
+            status["jarvis_import"] = f"failed: {str(e)}"
+        except Exception as e:
+            status["jarvis_import"] = f"error: {str(e)}"
+        
+        # Check config values
+        try:
+            import config
+            status["config_check"] = {
+                "AZURE_OPENAI_ENDPOINT": "set" if config.AZURE_OPENAI_ENDPOINT else "missing",
+                "AZURE_OPENAI_API_KEY": "set" if config.AZURE_OPENAI_API_KEY else "missing",
+                "AZURE_OPENAI_DEPLOYMENT": config.AZURE_OPENAI_DEPLOYMENT,
+                "AZURE_OPENAI_API_VERSION": config.AZURE_OPENAI_API_VERSION,
+            }
+        except Exception as e:
+            status["config_check"] = f"error: {str(e)}"
     
     return status
 
@@ -213,6 +242,55 @@ async def reinitialize():
             "message": "Reinitialization failed",
             "error": init_error_message,
             "agent_ready": jarvis_agent is not None
+        }
+
+@app.get("/api/test-azure")
+async def test_azure():
+    """Test Azure OpenAI connection"""
+    try:
+        from langchain_openai import AzureChatOpenAI
+        import config
+        
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or config.AZURE_OPENAI_ENDPOINT
+        api_key = os.getenv("AZURE_OPENAI_API_KEY") or config.AZURE_OPENAI_API_KEY
+        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+        
+        if not endpoint or not api_key:
+            return {
+                "status": "error",
+                "message": "Missing credentials",
+                "endpoint_set": bool(endpoint),
+                "api_key_set": bool(api_key)
+            }
+        
+        # Try to initialize Azure OpenAI
+        llm = AzureChatOpenAI(
+            azure_endpoint=endpoint,
+            azure_deployment=deployment,
+            api_version=api_version,
+            api_key=api_key,
+            temperature=0
+        )
+        
+        # Try a simple test call
+        from langchain_core.messages import HumanMessage
+        response = llm.invoke([HumanMessage(content="Say 'test'")])
+        
+        return {
+            "status": "success",
+            "message": "Azure OpenAI connection successful",
+            "response": response.content if hasattr(response, 'content') else str(response),
+            "endpoint": endpoint[:50] + "..." if len(endpoint) > 50 else endpoint,
+            "deployment": deployment
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Azure OpenAI connection failed: {str(e)}",
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
         }
 
 # Chat endpoint
