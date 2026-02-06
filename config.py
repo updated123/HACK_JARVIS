@@ -19,23 +19,29 @@ def get_azure_openai_config():
     # Try Streamlit secrets first (for Streamlit Cloud)
     try:
         import streamlit as st
-        if hasattr(st, 'secrets') and st.secrets:
-            # Access secrets directly (Streamlit Cloud format)
+        if hasattr(st, 'secrets'):
+            secrets = st.secrets
+            # Try to access secrets - Streamlit secrets can be accessed as dict or attributes
             try:
-                endpoint = st.secrets["AZURE_OPENAI_ENDPOINT"]
-            except (KeyError, TypeError):
-                pass
-            try:
-                api_key = st.secrets["AZURE_OPENAI_API_KEY"]
-            except (KeyError, TypeError):
-                pass
-            try:
-                deployment = st.secrets.get("AZURE_OPENAI_DEPLOYMENT", deployment)
-            except (KeyError, TypeError):
-                pass
-            try:
-                api_version = st.secrets.get("AZURE_OPENAI_API_VERSION", api_version)
-            except (KeyError, TypeError):
+                # Method 1: Direct dictionary access
+                if isinstance(secrets, dict):
+                    endpoint = secrets.get("AZURE_OPENAI_ENDPOINT") or secrets.get("AZURE_OPENAI_ENDPOINT")
+                    api_key = secrets.get("AZURE_OPENAI_API_KEY") or secrets.get("AZURE_OPENAI_API_KEY")
+                    if "AZURE_OPENAI_DEPLOYMENT" in secrets:
+                        deployment = secrets["AZURE_OPENAI_DEPLOYMENT"]
+                    if "AZURE_OPENAI_API_VERSION" in secrets:
+                        api_version = secrets["AZURE_OPENAI_API_VERSION"]
+                else:
+                    # Method 2: Attribute access (Streamlit secrets object)
+                    if hasattr(secrets, 'AZURE_OPENAI_ENDPOINT'):
+                        endpoint = secrets.AZURE_OPENAI_ENDPOINT
+                    if hasattr(secrets, 'AZURE_OPENAI_API_KEY'):
+                        api_key = secrets.AZURE_OPENAI_API_KEY
+                    if hasattr(secrets, 'AZURE_OPENAI_DEPLOYMENT'):
+                        deployment = secrets.AZURE_OPENAI_DEPLOYMENT
+                    if hasattr(secrets, 'AZURE_OPENAI_API_VERSION'):
+                        api_version = secrets.AZURE_OPENAI_API_VERSION
+            except (KeyError, TypeError, AttributeError):
                 pass
     except (ImportError, AttributeError, RuntimeError):
         pass
