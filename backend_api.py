@@ -28,31 +28,92 @@ compliance_tracker = None
 def initialize_backend():
     """Initialize backend services"""
     global jarvis_agent, compliance_tracker
+    init_errors = []
+    
     try:
-        from jarvis_graph import JarvisAgent
-        from compliance_tracker import ComplianceTracker
-        from data_generator import generate_all_clients
+        # Step 1: Set credentials FIRST (before any imports that use config)
+        import config
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
         
-        # Generate mock data if needed
+        if not endpoint or not api_key:
+            error_msg = "Missing Azure OpenAI credentials. "
+            if not endpoint:
+                error_msg += "AZURE_OPENAI_ENDPOINT not set. "
+            if not api_key:
+                error_msg += "AZURE_OPENAI_API_KEY not set."
+            raise ValueError(error_msg)
+        
+        # Set config values
+        config.AZURE_OPENAI_ENDPOINT = endpoint
+        config.AZURE_OPENAI_API_KEY = api_key
+        config.AZURE_OPENAI_DEPLOYMENT = deployment
+        config.AZURE_OPENAI_API_VERSION = api_version
+        print(f"✓ Credentials loaded (endpoint: {endpoint[:30]}..., deployment: {deployment})")
+        
+        # Step 2: Generate mock data if needed
+        from data_generator import generate_all_clients
+        import json
         data_file = Path("mock_data.json")
         if not data_file.exists():
             print("Generating mock data...")
-            generate_all_clients()
-            print("Mock data generated successfully")
+            data = generate_all_clients(200)
+            with open(data_file, "w") as f:
+                json.dump(data, f, indent=2)
+            print(f"✓ Generated {data.get('total_clients', 0)} clients")
+        else:
+            print("✓ Mock data file exists")
         
-        # Set credentials from environment variables (Render sets these)
-        import config
-        config.AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-        config.AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-        config.AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
-        config.AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+        # Step 3: Initialize vector store and load data
+        from vector_store import ClientVectorStore
+        vector_store_path = Path("chroma_db")
+        print("Initializing vector store...")
+        vector_store = ClientVectorStore()
         
-        jarvis_agent = JarvisAgent()
+        # Check if vector store needs to be populated
+        if not vector_store_path.exists() or not any(vector_store_path.iterdir()):
+            print("Vector store empty, loading client data...")
+            vector_store.load_client_data(str(data_file))
+            print("✓ Vector store populated")
+        else:
+            print("✓ Vector store already exists")
+        
+        # Step 4: Initialize compliance tracker
+        from compliance_tracker import ComplianceTracker
         compliance_tracker = ComplianceTracker()
-        print("Backend initialized successfully")
+        print("✓ Compliance tracker initialized")
+        
+        # Step 5: Initialize JarvisAgent (now that everything is ready)
+        from jarvis_graph import JarvisAgent
+        print("Initializing JarvisAgent...")
+        jarvis_agent = JarvisAgent()
+        print("✓ JarvisAgent initialized successfully")
+        
+        print("=" * 60)
+        print("Backend initialized successfully!")
+        print("=" * 60)
         return True
+        
+    except ValueError as e:
+        error_msg = f"Configuration Error: {str(e)}"
+        print(f"❌ {error_msg}")
+        init_errors.append(error_msg)
+        import traceback
+        traceback.print_exc()
+        return False
+    except ImportError as e:
+        error_msg = f"Import Error: {str(e)}"
+        print(f"❌ {error_msg}")
+        init_errors.append(error_msg)
+        import traceback
+        traceback.print_exc()
+        return False
     except Exception as e:
-        print(f"Error initializing backend: {e}")
+        error_msg = f"Initialization Error: {str(e)}"
+        print(f"❌ {error_msg}")
+        init_errors.append(error_msg)
         import traceback
         traceback.print_exc()
         return False
@@ -60,7 +121,17 @@ def initialize_backend():
 # Initialize on startup
 @app.on_event("startup")
 async def startup_event():
-    initialize_backend()
+    """Initialize backend on startup"""
+    print("=" * 60)
+    print("Starting Jarvis Backend API...")
+    print("=" * 60)
+    success = initialize_backend()
+    if not success:
+        print("=" * 60)
+        print("⚠️  WARNING: Backend initialization failed!")
+        print("Check logs above for details.")
+        print("The API will still start, but chat endpoints will return errors.")
+        print("=" * 60)
 
 # Request/Response models
 class ChatRequest(BaseModel):
@@ -92,10 +163,30 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {
-        "status": "healthy",
-        "agent_initialized": jarvis_agent is not None
+    """Health check with detailed status"""
+    status = {
+        "status": "healthy" if jarvis_agent is not None else "unhealthy",
+        "agent_initialized": jarvis_agent is not None,
+        "compliance_tracker_initialized": compliance_tracker is not None,
     }
+    
+    # Check environment variables
+    env_vars = {
+        "AZURE_OPENAI_ENDPOINT": "set" if os.getenv("AZURE_OPENAI_ENDPOINT") else "missing",
+        "AZURE_OPENAI_API_KEY": "set" if os.getenv("AZURE_OPENAI_API_KEY") else "missing",
+        "AZURE_OPENAI_DEPLOYMENT": os.getenv("AZURE_OPENAI_DEPLOYMENT", "not set"),
+        "AZURE_OPENAI_API_VERSION": os.getenv("AZURE_OPENAI_API_VERSION", "not set"),
+    }
+    status["environment_variables"] = env_vars
+    
+    # Check files
+    files = {
+        "mock_data.json": "exists" if Path("mock_data.json").exists() else "missing",
+        "chroma_db": "exists" if Path("chroma_db").exists() else "missing",
+    }
+    status["files"] = files
+    
+    return status
 
 # Chat endpoint
 @app.post("/api/chat", response_model=ChatResponse)
