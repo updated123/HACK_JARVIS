@@ -128,6 +128,7 @@ def main():
     st.markdown(f'<p class="sub-header">Proactive Assistant for {ADVISOR_NAME}</p>', unsafe_allow_html=True)
     
     # Try to initialize config from Streamlit secrets here (after Streamlit is initialized)
+    global JARVIS_AVAILABLE, JarvisAgent
     try:
         endpoint, api_key, deployment, api_version = get_azure_openai_config()
         config.AZURE_OPENAI_ENDPOINT = endpoint
@@ -138,7 +139,6 @@ def main():
         if not JARVIS_AVAILABLE or JarvisAgent is None:
             try:
                 from jarvis_graph import JarvisAgent
-                global JARVIS_AVAILABLE
                 JARVIS_AVAILABLE = True
             except Exception as e:
                 pass
