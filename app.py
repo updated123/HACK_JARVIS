@@ -130,11 +130,28 @@ def main():
     # Try to initialize config from Streamlit secrets here (after Streamlit is initialized)
     global JARVIS_AVAILABLE, JarvisAgent
     try:
-        endpoint, api_key, deployment, api_version = get_azure_openai_config()
-        config.AZURE_OPENAI_ENDPOINT = endpoint
-        config.AZURE_OPENAI_API_KEY = api_key
-        config.AZURE_OPENAI_DEPLOYMENT = deployment
-        config.AZURE_OPENAI_API_VERSION = api_version
+        # Direct access to st.secrets in main function where Streamlit is definitely initialized
+        if hasattr(st, 'secrets') and st.secrets:
+            try:
+                # Try dictionary access first
+                if "AZURE_OPENAI_ENDPOINT" in st.secrets:
+                    config.AZURE_OPENAI_ENDPOINT = st.secrets["AZURE_OPENAI_ENDPOINT"]
+                if "AZURE_OPENAI_API_KEY" in st.secrets:
+                    config.AZURE_OPENAI_API_KEY = st.secrets["AZURE_OPENAI_API_KEY"]
+                if "AZURE_OPENAI_DEPLOYMENT" in st.secrets:
+                    config.AZURE_OPENAI_DEPLOYMENT = st.secrets["AZURE_OPENAI_DEPLOYMENT"]
+                if "AZURE_OPENAI_API_VERSION" in st.secrets:
+                    config.AZURE_OPENAI_API_VERSION = st.secrets["AZURE_OPENAI_API_VERSION"]
+            except (KeyError, TypeError):
+                # Try attribute access
+                try:
+                    config.AZURE_OPENAI_ENDPOINT = getattr(st.secrets, 'AZURE_OPENAI_ENDPOINT', None)
+                    config.AZURE_OPENAI_API_KEY = getattr(st.secrets, 'AZURE_OPENAI_API_KEY', None)
+                    config.AZURE_OPENAI_DEPLOYMENT = getattr(st.secrets, 'AZURE_OPENAI_DEPLOYMENT', 'gpt-4o-mini')
+                    config.AZURE_OPENAI_API_VERSION = getattr(st.secrets, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
+                except:
+                    pass
+        
         # Now try to import JarvisAgent again if it failed before
         if not JARVIS_AVAILABLE or JarvisAgent is None:
             try:
