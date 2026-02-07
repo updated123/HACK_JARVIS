@@ -46,3 +46,4 @@ Thumbs.db
 # Mock data (optional - can be regenerated)
 mock_data.json
 
+__pycache__/
