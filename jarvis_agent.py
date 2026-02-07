@@ -126,65 +126,69 @@ class JarvisAgent:
                 description=desc
             )
         
-        # Optimized tool descriptions - shorter to reduce token usage
+        # Enhanced tool descriptions - semantic and intent-based for intelligent runtime matching
         self.tools = [
-            make_query_tool(self._search_clients, "search_clients", "Search clients"),
-            make_query_tool(self._get_client_details, "get_client_details", "Get client details"),
-            make_no_param_tool(lambda: self._get_daily_briefing(""), "get_daily_briefing", "Daily briefing"),
-            make_no_param_tool(lambda: self._get_reviews_due(""), "get_reviews_due", "Reviews due"),
-            make_no_param_tool(lambda: self._get_upcoming_milestones(""), "get_upcoming_milestones", "Milestones"),
-            make_no_param_tool(lambda: self._get_life_events(""), "get_life_events", "Life events"),
-            make_no_param_tool(lambda: self._get_unresolved_concerns(""), "get_unresolved_concerns", "Concerns"),
-            make_no_param_tool(lambda: self._get_clients_underweight_equities(""), "get_clients_underweight_equities", "Underweight equities"),
-            make_no_param_tool(lambda: self._get_clients_with_isa_allowance(""), "get_clients_with_isa_allowance", "ISA allowance"),
-            make_no_param_tool(lambda: self._get_clients_with_annual_allowance(""), "get_clients_with_annual_allowance", "Annual allowance"),
-            make_no_param_tool(lambda: self._get_clients_with_cash_excess(""), "get_clients_with_cash_excess", "Cash excess"),
-            make_no_param_tool(lambda: self._get_clients_retirement_trajectory_issues(""), "get_clients_retirement_trajectory_issues", "Retirement issues"),
-            make_no_param_tool(lambda: self._get_clients_with_protection_gaps(""), "get_clients_with_protection_gaps", "Protection gaps"),
-            make_no_param_tool(lambda: self._get_retired_clients_high_withdrawal(""), "get_retired_clients_high_withdrawal", "High withdrawal"),
-            make_no_param_tool(lambda: self._get_clients_reviews_overdue_12_months(""), "get_clients_reviews_overdue_12_months", "Overdue 12+mo"),
-            make_no_param_tool(lambda: self._get_business_owners(""), "get_business_owners", "Business owners"),
-            make_no_param_tool(lambda: self._get_clients_university_planning(""), "get_clients_university_planning", "University planning"),
-            make_query_tool(self._find_similar_clients, "find_similar_clients", "Similar clients"),
-            make_no_param_tool(lambda: self._get_hnw_clients_no_estate_planning(""), "get_hnw_clients_no_estate_planning", "HNW no estate"),
-            make_no_param_tool(lambda: self._get_pension_clients_for_cashflow(""), "get_pension_clients_for_cashflow", "Pension cashflow"),
-            make_no_param_tool(lambda: self._get_clients_investments_no_protection(""), "get_clients_investments_no_protection", "No protection"),
-            make_no_param_tool(lambda: self._get_business_owners_no_exit_planning(""), "get_business_owners_no_exit_planning", "No exit plan"),
-            make_no_param_tool(lambda: self._get_clients_birthdays_this_month(""), "get_clients_birthdays_this_month", "This month bdays"),
-            make_query_tool(self._get_recommendations_for_client, "get_recommendations_for_client", "Recommendations"),
-            make_query_tool(self._search_conversation_wording, "search_conversation_wording", "Search wording"),
-            make_query_tool(self._get_clients_recommended_platform, "get_clients_recommended_platform", "Platform clients"),
-            make_query_tool(self._get_conversations_about_topic, "get_conversations_about_topic", "Topic conversations"),
-            make_query_tool(self._get_discussion_summary, "get_discussion_summary", "Discussion summary"),
-            make_no_param_tool(lambda: self._get_documents_waiting(""), "get_documents_waiting", "Waiting docs"),
-            make_no_param_tool(lambda: self._get_promises_made(""), "get_promises_made", "Promises"),
-            make_no_param_tool(lambda: self._get_concerns_this_month(""), "get_concerns_this_month", "This month concerns"),
-            make_no_param_tool(lambda: self._get_service_usage_analysis(""), "get_service_usage_analysis", "Service usage"),
-            make_no_param_tool(lambda: self._get_conversion_rates(""), "get_conversion_rates", "Conversion rates"),
-            make_no_param_tool(lambda: self._get_book_demographics(""), "get_book_demographics", "Demographics"),
-            make_no_param_tool(lambda: self._get_revenue_time_analysis(""), "get_revenue_time_analysis", "Revenue/time"),
-            make_no_param_tool(lambda: self._get_satisfied_client_patterns(""), "get_satisfied_client_patterns", "Satisfied patterns"),
-            make_no_param_tool(lambda: self._get_recommendation_pushback(""), "get_recommendation_pushback", "Pushback"),
-            make_query_tool(self._get_similar_circumstances_cases, "get_similar_circumstances_cases", "Similar cases"),
-            make_no_param_tool(lambda: self._get_life_events_triggering_implementation(""), "get_life_events_triggering_implementation", "Life events impl"),
-            make_query_tool(self._draft_follow_up_email, "draft_follow_up_email", "Draft email"),
-            make_no_param_tool(lambda: self._get_waiting_on_clients(""), "get_waiting_on_clients", "Waiting on"),
-            make_no_param_tool(lambda: self._get_open_action_items(""), "get_open_action_items", "Action items"),
-            make_no_param_tool(lambda: self._get_overdue_follow_ups(""), "get_overdue_follow_ups", "Overdue followups"),
+            make_query_tool(self._search_clients, "search_clients", "Search for client information using natural language. Finds clients by name, characteristics, or any descriptive query. Use when advisor wants to find or search for specific clients or client information."),
+            make_query_tool(self._get_client_details, "get_client_details", "Get comprehensive details about a specific client including profile, meetings, and history. Use when advisor asks about a particular client by name or wants detailed client information."),
+            make_no_param_tool(lambda: self._get_daily_briefing(""), "get_daily_briefing", "Get standard daily briefing with reviews due, contact gaps, milestones, and life events. Use for general daily overview when contextual briefing not needed."),
+            make_no_param_tool(lambda: self._get_reviews_due(""), "get_reviews_due", "Get list of clients due for annual review with days overdue. Use when advisor asks about reviews, annual reviews, compliance reviews, or overdue reviews."),
+            make_no_param_tool(lambda: self._get_upcoming_milestones(""), "get_upcoming_milestones", "Get clients with upcoming milestone birthdays (50, 55, 60, 65, 70, 75) in next 30 days. Use when advisor asks about milestone birthdays, milestone planning, or age-related opportunities."),
+            make_no_param_tool(lambda: self._get_life_events(""), "get_life_events", "Get clients with recent or upcoming life events requiring attention. Use when advisor asks about life events, client events, or life changes."),
+            make_no_param_tool(lambda: self._get_unresolved_concerns(""), "get_unresolved_concerns", "Get clients with unresolved concerns that were mentioned but not yet addressed. Use when advisor asks about client concerns, worries, or unresolved issues."),
+            make_no_param_tool(lambda: self._get_clients_underweight_equities(""), "get_clients_underweight_equities", "Find clients whose equity allocation is below their risk profile target. Use when advisor asks about equity allocation, underweight equities, portfolio rebalancing, or risk profile alignment."),
+            make_no_param_tool(lambda: self._get_clients_with_isa_allowance(""), "get_clients_with_isa_allowance", "Get clients who still have ISA allowance available for current tax year. Use when advisor asks about ISA allowance, ISA opportunities, tax-free savings, or ISA contributions."),
+            make_no_param_tool(lambda: self._get_clients_with_annual_allowance(""), "get_clients_with_annual_allowance", "Get clients who still have pension annual allowance available. Use when advisor asks about pension allowance, annual allowance, pension contributions, or pension tax relief opportunities."),
+            make_no_param_tool(lambda: self._get_clients_with_cash_excess(""), "get_clients_with_cash_excess", "Find clients holding cash above 6 months expenditure that could be invested. Use when advisor asks about excess cash, cash holdings, cash deployment, or investment opportunities."),
+            make_no_param_tool(lambda: self._get_clients_retirement_trajectory_issues(""), "get_clients_retirement_trajectory_issues", "Identify clients whose current trajectory won't meet their retirement income goals. Use when advisor asks about retirement planning, retirement adequacy, retirement goals, or retirement trajectory."),
+            make_no_param_tool(lambda: self._get_clients_with_protection_gaps(""), "get_clients_with_protection_gaps", "Find clients with dependents but insufficient protection coverage (life insurance, critical illness, income protection). Use when advisor asks about protection gaps, insurance gaps, or protection needs."),
+            make_no_param_tool(lambda: self._get_retired_clients_high_withdrawal(""), "get_retired_clients_high_withdrawal", "Get retired clients taking withdrawal rates above 4% which may be unsustainable. Use when advisor asks about withdrawal rates, retirement income sustainability, or retired client risks."),
+            make_no_param_tool(lambda: self._get_clients_reviews_overdue_12_months(""), "get_clients_reviews_overdue_12_months", "Get clients who haven't had a review in over 12 months - serious compliance risk. Use when advisor asks about long-overdue reviews, 12+ month reviews, or severe compliance issues."),
+            make_no_param_tool(lambda: self._get_business_owners(""), "get_business_owners", "Get all clients who are business owners. Use when advisor asks about business owners, business clients, or entrepreneurs."),
+            make_no_param_tool(lambda: self._get_clients_university_planning(""), "get_clients_university_planning", "Find clients with children approaching university age (16-19) but no education planning in place. Use when advisor asks about university planning, education planning, or children approaching university."),
+            make_query_tool(self._find_similar_clients, "find_similar_clients", "Find clients with similar profiles, circumstances, or characteristics to a given client. Use when advisor wants to find similar cases, comparable clients, or clients like a specific example."),
+            make_no_param_tool(lambda: self._get_hnw_clients_no_estate_planning(""), "get_hnw_clients_no_estate_planning", "Get high-net-worth clients (>£1M) without estate planning in place. Use when advisor asks about HNW estate planning, inheritance tax planning, or high-value clients needing estate planning."),
+            make_no_param_tool(lambda: self._get_pension_clients_for_cashflow(""), "get_pension_clients_for_cashflow", "Get pension clients who might benefit from cashflow modelling services. Use when advisor asks about cashflow modelling opportunities or pension clients needing cashflow analysis."),
+            make_no_param_tool(lambda: self._get_clients_investments_no_protection(""), "get_clients_investments_no_protection", "Find clients with investment portfolios but no protection cover. Use when advisor asks about protection needs for investors or clients with investments but no insurance."),
+            make_no_param_tool(lambda: self._get_business_owners_no_exit_planning(""), "get_business_owners_no_exit_planning", "Get business owner clients without exit planning discussions. Use when advisor asks about business exit planning, succession planning, or business owners needing exit strategies."),
+            make_no_param_tool(lambda: self._get_clients_birthdays_this_month(""), "get_clients_birthdays_this_month", "Get clients with birthdays in the current month. Use when advisor asks about birthdays this month, monthly birthdays, or client birthdays."),
+            make_query_tool(self._get_recommendations_for_client, "get_recommendations_for_client", "Get all recommendations made to a specific client with rationale and status. Use when advisor asks about recommendations for a client, what was recommended, or recommendation history."),
+            make_query_tool(self._search_conversation_wording, "search_conversation_wording", "Search for exact wording or phrases used in past conversations. Use when advisor wants to find specific wording, exact quotes, or how something was said in meetings."),
+            make_query_tool(self._get_clients_recommended_platform, "get_clients_recommended_platform", "Get clients where a specific platform or provider was recommended and why. Use when advisor asks about platform recommendations, provider recommendations, or which clients got specific recommendations."),
+            make_query_tool(self._get_conversations_about_topic, "get_conversations_about_topic", "Get all conversations that discussed a specific topic. Use when advisor asks about discussions on a topic, conversations about something, or meeting topics."),
+            make_query_tool(self._get_discussion_summary, "get_discussion_summary", "Get summary of all discussions about a topic across multiple clients. Use when advisor wants an overview of how a topic was discussed across the client base."),
+            make_no_param_tool(lambda: self._get_documents_waiting(""), "get_documents_waiting", "Get all documents currently waiting for from clients. Use when advisor asks about outstanding documents, documents waiting, or pending documentation."),
+            make_no_param_tool(lambda: self._get_promises_made(""), "get_promises_made", "Get all promises or commitments made to clients that haven't been fulfilled. Use when advisor asks about promises, commitments, or what was promised to clients."),
+            make_no_param_tool(lambda: self._get_concerns_this_month(""), "get_concerns_this_month", "Get concerns raised by clients in meetings this month, grouped by type. Use when advisor asks about recent concerns, this month's concerns, or client worries this month."),
+            make_no_param_tool(lambda: self._get_service_usage_analysis(""), "get_service_usage_analysis", "Analyze which services/products are used most by high-value clients. Use when advisor asks about service usage, product usage, or what services clients use."),
+            make_no_param_tool(lambda: self._get_conversion_rates(""), "get_conversion_rates", "Get conversion rates from initial meeting to becoming a client by referral source. Use when advisor asks about conversion rates, referral effectiveness, or client acquisition metrics."),
+            make_no_param_tool(lambda: self._get_book_demographics(""), "get_book_demographics", "Analyze client book demographics including age groups, retirement status, business owners, HNW clients. Use when advisor asks about book demographics, client demographics, or portfolio composition."),
+            make_no_param_tool(lambda: self._get_revenue_time_analysis(""), "get_revenue_time_analysis", "Analyze which clients generate most revenue relative to time spent servicing them. Use when advisor asks about revenue efficiency, time efficiency, or most efficient clients."),
+            make_no_param_tool(lambda: self._get_satisfied_client_patterns(""), "get_satisfied_client_patterns", "Analyze patterns and characteristics of most satisfied long-term clients. Use when advisor asks about satisfied clients, happy clients, or what makes clients satisfied."),
+            make_no_param_tool(lambda: self._get_recommendation_pushback(""), "get_recommendation_pushback", "Analyze which types of recommendations get the most pushback or declines. Use when advisor asks about recommendation acceptance, pushback, or declined recommendations."),
+            make_query_tool(self._get_similar_circumstances_cases, "get_similar_circumstances_cases", "Find clients with similar circumstances to cases where significant value was added. Use when advisor wants to find similar cases or identify opportunities based on past success."),
+            make_no_param_tool(lambda: self._get_life_events_triggering_implementation(""), "get_life_events_triggering_implementation", "Identify which life events correlate with clients actually implementing recommendations. Use when advisor asks about what triggers action, life events and implementation, or when clients take action."),
+            make_query_tool(self._draft_follow_up_email, "draft_follow_up_email", "Draft a personalized follow-up email for a client after a meeting, including action items and next steps. Use when advisor asks to draft email, write follow-up, create email, or email to client after meeting."),
+            make_no_param_tool(lambda: self._get_waiting_on_clients(""), "get_waiting_on_clients", "Get clients waiting on for information, documents, or decisions. Use when advisor asks about waiting on clients, pending client responses, or clients we're waiting for."),
+            make_no_param_tool(lambda: self._get_open_action_items(""), "get_open_action_items", "Get all open action items across the entire client base. Use when advisor asks about action items, open actions, tasks, or to-do items."),
+            make_no_param_tool(lambda: self._get_overdue_follow_ups(""), "get_overdue_follow_ups", "Get follow-up commitments that are now overdue. Use when advisor asks about overdue follow-ups, missed follow-ups, or commitments that are late."),
             # Scenario modeling and analysis tools
-            make_query_tool(self._analyze_interest_rate_impact, "analyze_interest_rate_impact", "Interest rate impact"),
-            make_query_tool(self._analyze_market_correction_exposure, "analyze_market_correction_exposure", "Market correction exposure"),
-            make_query_tool(self._model_retirement_scenario, "model_retirement_scenario", "Retirement scenario"),
-            make_query_tool(self._model_long_term_care_scenario, "model_long_term_care_scenario", "Long-term care scenario"),
-            make_no_param_tool(lambda: self._get_business_owners_rd_tax_credit(""), "get_business_owners_rd_tax_credit", "R&D tax credit"),
-            # Proactive Intelligence Features
-            make_no_param_tool(lambda: self._get_priority_scored_opportunities(""), "get_priority_scored_opportunities", "Get top opportunities ranked by priority score and impact"),
-            make_no_param_tool(lambda: self._get_relationship_health_dashboard(""), "get_relationship_health", "Get relationship health dashboard with risk analysis"),
-            make_no_param_tool(lambda: self._get_opportunity_window_alerts(""), "get_opportunity_alerts", "Get time-sensitive opportunity alerts with deadlines"),
-            make_no_param_tool(lambda: self._get_predictive_risk_detection(""), "get_predictive_risks", "Get predictive risk analysis across all clients"),
-            make_no_param_tool(lambda: self._get_contextual_morning_briefing(""), "get_contextual_briefing", "Get personalized contextual morning briefing"),
-            make_no_param_tool(lambda: self._get_client_clusters(""), "get_client_clusters", "Get client clusters and pattern recognition"),
-            make_no_param_tool(lambda: self._get_value_demonstration_summary(""), "get_value_summary", "Get value demonstration summary showing tax savings, ISA/pension allowances, risk mitigation, and total value delivered to clients")
+            make_query_tool(self._analyze_interest_rate_impact, "analyze_interest_rate_impact", "Analyze which clients would be impacted if interest rates change to a specified level. Use when advisor asks about interest rate impact, rate changes, or how rate changes affect clients."),
+            make_query_tool(self._analyze_market_correction_exposure, "analyze_market_correction_exposure", "Analyze which clients are most exposed to a market correction of specified percentage. Use when advisor asks about market correction impact, market risk, or equity exposure."),
+            make_query_tool(self._model_retirement_scenario, "model_retirement_scenario", "Model what happens if a client retires at a different age or time than planned. Use when advisor asks to model retirement scenarios, early retirement, or retirement timing changes."),
+            make_query_tool(self._model_long_term_care_scenario, "model_long_term_care_scenario", "Model the financial impact if a client or family member needs long-term care. Use when advisor asks about long-term care scenarios, care costs, or care planning."),
+            make_no_param_tool(lambda: self._get_business_owners_rd_tax_credit(""), "get_business_owners_rd_tax_credit", "Get business owner clients who might benefit from R&D tax credit opportunities. Use when advisor asks about R&D tax credits, research and development credits, or business tax opportunities."),
+            # Proactive Intelligence Features - Enhanced descriptions for intelligent matching
+            make_no_param_tool(lambda: self._get_priority_scored_opportunities(""), "get_priority_scored_opportunities", "Automatically ranks ALL opportunities by priority score = (urgency × client value × regulatory risk) / time required. Shows top priorities with impact scores. Use when advisor asks: what should I focus on, top priorities, most important tasks, what to do first, ranked opportunities, or wants prioritized action list."),
+            make_no_param_tool(lambda: self._get_relationship_health_dashboard(""), "get_relationship_health", "Comprehensive dashboard showing engagement scores (0-100), risk levels (High/Medium/Low), relationship momentum, value at risk, and risk factors for each client. Use when advisor asks: relationship health, at-risk clients, client relationships, engagement, which clients might leave, relationship status, or client satisfaction."),
+            make_no_param_tool(lambda: self._get_opportunity_window_alerts(""), "get_opportunity_alerts", "Time-sensitive opportunities with countdown timers showing days remaining. Tracks tax year deadlines (ISA, pension), milestone birthdays, policy renewals. Use when advisor asks: deadlines, expiring opportunities, time-sensitive actions, tax year deadlines, opportunities closing soon, or urgent deadlines."),
+            make_no_param_tool(lambda: self._get_predictive_risk_detection(""), "get_predictive_risks", "Identifies problems BEFORE they become critical. Categories: Compliance risks (overdue reviews), Relationship risks (contact gaps), Financial risks (high withdrawal, protection gaps), Opportunity risks (missing deadlines). Use when advisor asks: risks, potential problems, what could go wrong, compliance issues, risk analysis, or proactive risk identification."),
+            make_no_param_tool(lambda: self._get_contextual_morning_briefing(""), "get_contextual_briefing", "Personalized daily briefing combining all proactive features. Shows top 3 priorities, critical items, time-sensitive opportunities, proactive suggestions, and quick stats. Use when advisor asks: morning briefing, daily briefing, what to do today, today's priorities, start of day, or comprehensive daily overview."),
+            make_no_param_tool(lambda: self._get_client_clusters(""), "get_client_clusters", "Groups clients by similar characteristics and identifies patterns. Clusters: Approaching Retirement, Young Professionals, Business Owners, High Net Worth, At-Risk. Shows opportunities within each cluster. Use when advisor asks: client patterns, similar clients, client groups, demographics, client segments, or wants to identify opportunities by client type."),
+            make_no_param_tool(
+                lambda: self._get_value_demonstration_summary(""), 
+                "get_value_summary", 
+                "Quantifies and demonstrates the value delivered to clients. Calculates: tax savings from ISA allowances (tax-free growth on unused allowance), pension annual allowance tax relief (25% average), risk mitigation (protection coverage, estate planning), compliance metrics (review completion rates), total portfolio value managed. Shows potential annual tax savings, tax relief opportunities, and value metrics. Use when advisor asks about: value delivered, tax savings, tax savings identified, tax optimizations, value created, value demonstration, savings opportunities, tax relief, ISA tax benefits, pension tax benefits, Consumer Duty compliance, showing value to clients, or quantifying advisor value."
+            )
         ]
         
         # Create tool node if available, otherwise use custom implementation
@@ -240,19 +244,23 @@ class JarvisAgent:
                         if tool_func:
                             logger.info(f"Executing tool: {tool_name} with input: {tool_input}")
                             try:
+                                # GUARDRAIL: Validate tool selection matches query intent (soft validation)
+                                query_context = state.get("current_query", "")
+                                if query_context:
+                                    logger.debug(f"Tool {tool_name} selected for query: {query_context[:100]}")
+                                
                                 # Handle Azure OpenAI's tool calling format
-                                # Azure OpenAI may pass empty dict {} or dict with parameters
                                 import inspect
                                 sig = inspect.signature(tool_func)
                                 params = list(sig.parameters.keys())
                                 
+                                # GUARDRAIL: Validate and prepare input
                                 if isinstance(tool_input, dict):
                                     if not tool_input or tool_input == {}:
                                         # Empty dict - tool has no parameters
                                         if len(params) == 0:
                                             result = tool_func()
                                         elif len(params) == 1 and params[0] == "query":
-                                            # Tool expects query but got empty dict
                                             result = tool_func("")
                                         else:
                                             result = tool_func()
@@ -261,6 +269,9 @@ class JarvisAgent:
                                         if len(params) == 1 and params[0] == "query":
                                             # Extract query from dict (handle various key names)
                                             query_val = tool_input.get("query") or tool_input.get("client_name") or tool_input.get("text") or ""
+                                            # GUARDRAIL: Ensure query is string
+                                            if not isinstance(query_val, str):
+                                                query_val = str(query_val) if query_val else ""
                                             result = tool_func(query_val)
                                         else:
                                             # Try to match parameters
@@ -268,13 +279,11 @@ class JarvisAgent:
                                             if filtered_args:
                                                 result = tool_func(**filtered_args)
                                             else:
-                                                # Fallback: try calling with first param if single param
                                                 if len(params) == 1:
                                                     result = tool_func(list(tool_input.values())[0] if tool_input else "")
                                                 else:
                                                     result = tool_func()
                                 elif isinstance(tool_input, str):
-                                    # String input - check if tool expects query
                                     if len(params) == 1 and params[0] == "query":
                                         result = tool_func(tool_input)
                                     elif len(params) == 0:
@@ -282,24 +291,37 @@ class JarvisAgent:
                                     else:
                                         result = tool_func(**{params[0]: tool_input})
                                 elif not tool_input or tool_input == {}:
-                                    # No input - call without args
                                     result = tool_func()
                                 else:
-                                    # Unknown format - try to convert
                                     if len(params) == 1:
                                         result = tool_func(str(tool_input))
                                     else:
                                         result = tool_func()
                                 
-                                logger.info(f"Tool {tool_name} executed successfully, result length: {len(str(result))}")
+                                # GUARDRAIL: Validate result
+                                if result is None:
+                                    logger.warning(f"Tool {tool_name} returned None")
+                                    result = "No results found."
+                                if not isinstance(result, str):
+                                    result = str(result)
+                                if len(result) == 0:
+                                    logger.warning(f"Tool {tool_name} returned empty result")
+                                    result = "No data available for this query."
+                                elif len(result) > 50000:
+                                    logger.warning(f"Tool {tool_name} returned very large result ({len(result)} chars)")
+                                    result = result[:50000] + "\n\n[Result truncated due to size]"
+                                
+                                logger.info(f"Tool {tool_name} executed successfully, result length: {len(result)}")
                                 tool_messages.append(ToolMessage(
-                                    content=str(result),
+                                    content=result,
                                     tool_call_id=tool_call_id
                                 ))
                             except Exception as e:
                                 logger.error(f"Error executing tool {tool_name}: {e}", exc_info=True)
+                                # GUARDRAIL: Provide helpful error message
+                                error_msg = f"Error executing {tool_name}: {str(e)}. Please try rephrasing your query."
                                 tool_messages.append(ToolMessage(
-                                    content=f"Error executing {tool_name}: {str(e)}",
+                                    content=error_msg,
                                     tool_call_id=tool_call_id
                                 ))
                     
@@ -394,11 +416,15 @@ class JarvisAgent:
         system_prompt = SystemMessage(content="""You are Jarvis, a proactive AI assistant for UK Financial Advisors using an AGENTIC WORKFLOW.
 
 AGENTIC WORKFLOW - YOU DECIDE WHICH TOOLS TO USE:
-- Analyze the user's question carefully
-- Select the appropriate tool(s) from the available tools
+- Analyze the user's question carefully - understand the INTENT, not just keywords
+- Match queries to tools based on SEMANTIC MEANING, not exact word matching
+- Select the appropriate tool(s) from the available tools based on what the user wants to accomplish
 - You can call multiple tools if needed to gather comprehensive information
 - Process tool results and provide a thoughtful, synthesized answer
-- Use your intelligence to determine the best approach - don't rely on simple keyword matching
+- Use your intelligence to determine the best approach - understand context and intent
+- Example: "Show me tax savings" = user wants value summary (tax savings are part of value delivered)
+- Example: "What should I focus on" = user wants prioritized opportunities
+- Example: "Who needs attention" = user wants relationship health analysis
 
 AVAILABLE TOOLS (You decide when to use each):
 1. Investment Analysis: get_clients_underweight_equities, get_clients_with_isa_allowance, get_clients_with_annual_allowance, get_clients_with_cash_excess, get_clients_retirement_trajectory_issues, get_clients_with_protection_gaps, get_retired_clients_high_withdrawal, analyze_interest_rate_impact, analyze_market_correction_exposure
@@ -429,22 +455,29 @@ INNOVATION & IMPACT:
 - Provide strategic insights beyond just answering the question
 
 PROACTIVE INTELLIGENCE FEATURES (NEW):
-1. Priority Scoring: get_priority_scored_opportunities - Automatically ranks opportunities by impact, urgency, and value. Use when advisor asks "what should I focus on" or "top priorities"
-2. Relationship Health: get_relationship_health - Dashboard showing client relationship health, risk levels, and value at risk. Use for "relationship health" or "at-risk clients"
-3. Opportunity Alerts: get_opportunity_alerts - Time-sensitive opportunities with deadlines. Use for "deadlines" or "expiring opportunities"
-4. Predictive Risks: get_predictive_risks - Identifies problems before they become critical. Use for "risks" or "potential problems"
-5. Contextual Briefing: get_contextual_briefing - Personalized morning briefing with top priorities. Use for "morning briefing" or "what should I do today"
-6. Client Clusters: get_client_clusters - Groups similar clients and identifies patterns. Use for "similar clients" or "patterns"
-7. Value Summary: get_value_summary - Quantifies value delivered to clients including tax savings, ISA/pension allowances, risk mitigation. Use for "value delivered", "demonstrate value", "tax savings", "show me tax savings", "value I've delivered"
+1. Priority Scoring (get_priority_scored_opportunities): Automatically ranks ALL opportunities by impact score = (urgency × client value × regulatory risk) / time required. Use when advisor asks about priorities, what to focus on, most important tasks, top opportunities, or wants ranked/prioritized list of actions.
 
-When to use proactive features:
-- Advisor asks "what should I focus on" → Use get_priority_scored_opportunities
-- Advisor asks "who needs attention" → Use get_relationship_health
-- Advisor asks "what deadlines" → Use get_opportunity_alerts
-- Advisor asks "what risks" → Use get_predictive_risks
-- Advisor asks "morning briefing" → Use get_contextual_briefing
-- Advisor asks "show me patterns" → Use get_client_clusters
-- Advisor asks "value delivered", "tax savings", "show me tax savings", "value I've identified" → Use get_value_summary
+2. Relationship Health (get_relationship_health): Comprehensive dashboard showing engagement scores (0-100), risk levels (High/Medium/Low), relationship momentum (Improving/Stable/Declining), value at risk, and risk factors for each client. Use when advisor asks about client relationships, at-risk clients, relationship health, engagement, client satisfaction, or wants to identify clients who might leave.
+
+3. Opportunity Alerts (get_opportunity_alerts): Time-sensitive opportunities with countdown timers showing days remaining until deadline. Tracks tax year deadlines (ISA, pension), milestone birthdays, policy renewals. Use when advisor asks about deadlines, expiring opportunities, time-sensitive actions, tax year deadlines, or opportunities closing soon.
+
+4. Predictive Risks (get_predictive_risks): Identifies problems BEFORE they become critical. Categories: Compliance risks (overdue reviews), Relationship risks (contact gaps), Financial risks (high withdrawal rates, protection gaps), Opportunity risks (missing deadlines). Use when advisor asks about risks, potential problems, what could go wrong, compliance issues, or wants proactive risk identification.
+
+5. Contextual Briefing (get_contextual_briefing): Personalized daily briefing combining all proactive features. Shows top 3 priorities, critical items, time-sensitive opportunities, and proactive suggestions. Use when advisor asks for morning briefing, daily briefing, what to do today, today's priorities, or wants a comprehensive start-of-day overview.
+
+6. Client Clusters (get_client_clusters): Groups clients by similar characteristics and identifies patterns. Clusters: Approaching Retirement, Young Professionals, Business Owners, High Net Worth, At-Risk. Use when advisor asks about client patterns, similar clients, client groups, demographics, or wants to identify opportunities within client segments.
+
+7. Value Summary (get_value_summary): Quantifies value delivered to clients. Calculates: tax savings from ISA allowances (tax-free growth), pension annual allowance tax relief, risk mitigation (protection coverage, estate planning), compliance metrics, total portfolio value managed. Use when advisor asks about: value delivered, tax savings, tax optimizations, value created, value demonstration, savings opportunities, tax relief, ISA benefits, pension benefits, Consumer Duty compliance, or wants to show value to clients/regulators.
+
+TOOL SELECTION GUIDELINES:
+- Analyze the INTENT behind the question, not just keywords
+- If question is about quantifying/demonstrating value, tax benefits, or compliance metrics → get_value_summary
+- If question is about what to prioritize or focus on → get_priority_scored_opportunities  
+- If question is about client relationships or risk → get_relationship_health
+- If question is about deadlines or time-sensitive items → get_opportunity_alerts
+- If question is about potential problems or risks → get_predictive_risks
+- If question is about daily overview or start of day → get_contextual_briefing
+- If question is about patterns or client groups → get_client_clusters
 
 ALWAYS prioritize proactive insights over reactive answers!""")
         
@@ -2011,15 +2044,10 @@ ALWAYS prioritize proactive insights over reactive answers!""")
         elif "concern" in query_lower and ("unresolved" in query_lower or "client" in query_lower):
             logger.info("Executing: get_unresolved_concerns")
             return self._get_unresolved_concerns("")
-        elif "tax savings" in query_lower or ("tax" in query_lower and "savings" in query_lower):
-            logger.info("Executing: get_value_summary")
-            return self._get_value_demonstration_summary("")
-        elif "value" in query_lower and ("delivered" in query_lower or "demonstrate" in query_lower or "identified" in query_lower or "created" in query_lower):
-            logger.info("Executing: get_value_summary")
-            return self._get_value_demonstration_summary("")
         else:
-            # Try search as last resort
-            logger.info("No direct match - trying search_clients")
+            # Fallback: Use intelligent search instead of exact matching
+            # The agentic workflow should handle most queries, this is last resort
+            logger.info("Fallback: No direct match - trying intelligent search")
             return self._search_clients(query)
     
     # ==================== PROACTIVE INTELLIGENCE FEATURES ====================
