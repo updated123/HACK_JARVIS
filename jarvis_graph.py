@@ -382,35 +382,42 @@ class JarvisAgent:
         messages = state["messages"]
         logger.debug(f"Processing {len(messages)} messages")
         
-        # Enhanced system prompt - comprehensive coverage of all question types
-        system_prompt = SystemMessage(content="""You are Jarvis, a proactive AI assistant for UK Financial Advisors.
+        # Enhanced system prompt - comprehensive coverage with emphasis on agentic tool selection
+        system_prompt = SystemMessage(content="""You are Jarvis, a proactive AI assistant for UK Financial Advisors using an AGENTIC WORKFLOW.
 
-CORE CAPABILITIES:
-1. Investment Analysis: Underweight equities, ISA/annual allowances, cash excess, retirement trajectory, protection gaps, withdrawal rates, interest rate impact, market correction exposure
-2. Proactive Identification: Reviews overdue 12+ months, business owners (R&D tax credits, exit planning), university planning, similar client profiles, HNW estate planning, birthdays
-3. Compliance & Documentation: Recommendations with rationale, exact conversation wording, platform recommendations, topic discussions, document summaries, waiting documents, promises made
-4. Business Analytics: Service usage, conversion rates, book demographics, revenue/time analysis, satisfied client patterns, recommendation pushback, similar value cases
-5. Follow-ups & Actions: Draft follow-up emails, waiting on clients, open action items, overdue follow-ups, life events triggering implementation
+AGENTIC WORKFLOW - YOU DECIDE WHICH TOOLS TO USE:
+- Analyze the user's question carefully
+- Select the appropriate tool(s) from the available tools
+- You can call multiple tools if needed to gather comprehensive information
+- Process tool results and provide a thoughtful, synthesized answer
+- Use your intelligence to determine the best approach - don't rely on simple keyword matching
+
+AVAILABLE TOOLS (You decide when to use each):
+1. Investment Analysis: get_clients_underweight_equities, get_clients_with_isa_allowance, get_clients_with_annual_allowance, get_clients_with_cash_excess, get_clients_retirement_trajectory_issues, get_clients_with_protection_gaps, get_retired_clients_high_withdrawal, analyze_interest_rate_impact, analyze_market_correction_exposure
+2. Proactive Identification: get_clients_reviews_overdue_12_months, get_business_owners, get_business_owners_rd_tax_credit, get_clients_university_planning, find_similar_clients, get_hnw_clients_no_estate_planning, get_clients_birthdays_this_month
+3. Compliance & Documentation: get_recommendations_for_client, search_conversation_wording, get_clients_recommended_platform, get_conversations_about_topic, get_discussion_summary, get_documents_waiting, get_promises_made
+4. Business Analytics: get_service_usage_analysis, get_conversion_rates, get_book_demographics, get_revenue_time_analysis, get_satisfied_client_patterns, get_recommendation_pushback, get_similar_circumstances_cases
+5. Follow-ups & Actions: draft_follow_up_email, get_waiting_on_clients, get_open_action_items, get_overdue_follow_ups, get_life_events_triggering_implementation
+6. General: search_clients, get_client_details, get_daily_briefing, get_reviews_due, get_upcoming_milestones, get_life_events, get_unresolved_concerns
+7. Scenario Modeling: model_retirement_scenario, model_long_term_care_scenario
 
 CONVERSATION CONTEXT:
 - You maintain full conversation history - reference previous questions and answers
 - Build on previous context - if asked about a client, remember it for follow-up questions
 - Use "we discussed earlier" when referencing previous conversation
-- Provide comprehensive answers that connect related information
 
 GUIDELINES:
-- Be concise but comprehensive - prioritize urgent/important items first
-- Always use tools to gather data before answering - never guess
-- Provide actionable insights with specific client names, dates, and numbers
-- For scenario modeling (interest rates, market corrections, retirement, long-term care), use available data and provide realistic projections
-- When drafting emails, be professional, personalized, and include specific action items
-- For compliance queries, provide exact wording and full context
+- ALWAYS use tools to gather data - never guess or make up information
+- You can call multiple tools in sequence if needed
+- Synthesize tool results into a comprehensive, actionable answer
+- Be concise but thorough - prioritize urgent/important items first
+- Provide specific client names, dates, and numbers from tool results
 - Connect related information across different tools when relevant
 
 INNOVATION & IMPACT:
-- Proactively suggest related opportunities ("You might also want to check...")
+- Proactively suggest related opportunities based on tool results
 - Identify patterns and trends across the client base
-- Highlight time-sensitive opportunities (deadlines, windows closing)
+- Highlight time-sensitive opportunities
 - Provide strategic insights beyond just answering the question""")
         
         # Prepare messages with system prompt
@@ -1785,30 +1792,7 @@ INNOVATION & IMPACT:
         # Add current message
         messages.append(HumanMessage(content=message))
         
-        # Check if this is a simple query that can be handled directly (bypass LLM to avoid rate limits)
-        query_lower = message.lower()
-        simple_queries = [
-            "review", "due", "overdue", "annual review",
-            "life event", "life events",
-            "concern", "unresolved",
-            "daily briefing", "briefing", "needs attention",
-            "isa allowance", "annual allowance",
-            "documents waiting", "action items",
-            "milestones", "birthdays"
-        ]
-        
-        # If query matches simple patterns, try direct execution first
-        if any(keyword in query_lower for keyword in simple_queries):
-            logger.info("Query matches simple pattern - trying direct tool execution first")
-            try:
-                result = self._fallback_direct_tool_execution(message)
-                if result and len(result) > 20 and "No matching" not in result:
-                    logger.info("Direct tool execution succeeded - bypassing LLM")
-                    logger.info(f"=== CHAT END: Direct execution success ===")
-                    return result
-            except Exception as e:
-                logger.warning(f"Direct execution failed: {e}, will try LLM")
-        
+        # Always use agentic workflow - LLM decides which tools to use
         initial_state = {
             "messages": messages,  # Use messages with history
             "current_query": message,
@@ -1817,7 +1801,7 @@ INNOVATION & IMPACT:
         }
         
         try:
-            logger.info("Invoking graph...")
+            logger.info("Invoking LangGraph agentic workflow - LLM will decide which tools to use...")
             result = self.graph.invoke(initial_state)
             logger.info(f"Graph execution complete. Messages in result: {len(result.get('messages', []))}")
             
@@ -1866,32 +1850,23 @@ INNOVATION & IMPACT:
             error_str = str(e).lower()
             logger.error(f"Error in chat method: {e}", exc_info=True)
             
-            # Check for rate limit or quota errors - immediately fall back to direct tool execution
+            # Check for rate limit or quota errors - provide helpful error message
             if any(keyword in error_str for keyword in ["rate_limit", "quota", "429", "insufficient_quota", "rate limit", "too many requests"]):
                 self.fallback_mode = True
                 self.rate_limit_errors += 1
-                logger.warning("Rate limit/quota error detected - immediately using fallback direct execution")
-                result = self._fallback_direct_tool_execution(message)
-                if result and "No matching" not in result and len(result) > 20:
-                    logger.info(f"=== CHAT END: Fallback success (rate limit bypass) ===")
-                    return result
-                logger.info(f"=== CHAT END: Fallback attempted but may need LLM ===")
-                return "I'm experiencing API rate limits. Many queries work directly:\n- 'Daily briefing'\n- 'Reviews due'\n- 'ISA allowance'\n- 'Documents waiting'\n- 'Life events'\n- 'Unresolved concerns'\n\nPlease try one of these direct queries."
+                logger.warning("Rate limit/quota error detected")
+                logger.info(f"=== CHAT END: Rate limit error ===")
+                return "I'm experiencing API rate limits. Please try again in a moment. The system uses an agentic workflow where the AI intelligently selects the right tools for your query."
             
             # Try to provide helpful response based on error
             if "tool" in error_str and "validation" in error_str:
-                logger.info("Tool validation error - trying fallback direct execution")
-                result = self._fallback_direct_tool_execution(message)
-                logger.info(f"=== CHAT END: Fallback execution ===")
-                return result
+                logger.warning("Tool validation error - this should not happen in agentic workflow")
+                logger.info(f"=== CHAT END: Tool validation error ===")
+                return "There was an error with tool validation. Please rephrase your question."
             elif "413" in error_str or "too large" in error_str or "tpm" in error_str:
-                logger.info("Request too large - trying fallback")
-                result = self._fallback_direct_tool_execution(message)
-                if result and "No matching" not in result:
-                    logger.info(f"=== CHAT END: Fallback success ===")
-                    return result
-                logger.info(f"=== CHAT END: Fallback failed ===")
-                return "Request too large. Try shorter queries like: 'Daily briefing', 'Reviews due', 'ISA allowance', 'Documents waiting'"
+                logger.warning("Request too large")
+                logger.info(f"=== CHAT END: Request too large ===")
+                return "Your query is too large. Please try a shorter, more focused question."
             else:
                 logger.error(f"Unexpected error: {e}")
                 logger.info(f"=== CHAT END: Error ===")
