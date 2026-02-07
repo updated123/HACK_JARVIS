@@ -176,7 +176,15 @@ class JarvisAgent:
             make_query_tool(self._analyze_market_correction_exposure, "analyze_market_correction_exposure", "Market correction exposure"),
             make_query_tool(self._model_retirement_scenario, "model_retirement_scenario", "Retirement scenario"),
             make_query_tool(self._model_long_term_care_scenario, "model_long_term_care_scenario", "Long-term care scenario"),
-            make_no_param_tool(lambda: self._get_business_owners_rd_tax_credit(""), "get_business_owners_rd_tax_credit", "R&D tax credit")
+            make_no_param_tool(lambda: self._get_business_owners_rd_tax_credit(""), "get_business_owners_rd_tax_credit", "R&D tax credit"),
+            # Proactive Intelligence Features
+            make_no_param_tool(lambda: self._get_priority_scored_opportunities(""), "get_priority_scored_opportunities", "Get top opportunities ranked by priority score and impact"),
+            make_no_param_tool(lambda: self._get_relationship_health_dashboard(""), "get_relationship_health", "Get relationship health dashboard with risk analysis"),
+            make_no_param_tool(lambda: self._get_opportunity_window_alerts(""), "get_opportunity_alerts", "Get time-sensitive opportunity alerts with deadlines"),
+            make_no_param_tool(lambda: self._get_predictive_risk_detection(""), "get_predictive_risks", "Get predictive risk analysis across all clients"),
+            make_no_param_tool(lambda: self._get_contextual_morning_briefing(""), "get_contextual_briefing", "Get personalized contextual morning briefing"),
+            make_no_param_tool(lambda: self._get_client_clusters(""), "get_client_clusters", "Get client clusters and pattern recognition"),
+            make_no_param_tool(lambda: self._get_value_demonstration_summary(""), "get_value_summary", "Get value demonstration summary showing delivered value")
         ]
         
         # Create tool node if available, otherwise use custom implementation
@@ -418,7 +426,27 @@ INNOVATION & IMPACT:
 - Proactively suggest related opportunities based on tool results
 - Identify patterns and trends across the client base
 - Highlight time-sensitive opportunities
-- Provide strategic insights beyond just answering the question""")
+- Provide strategic insights beyond just answering the question
+
+PROACTIVE INTELLIGENCE FEATURES (NEW):
+1. Priority Scoring: get_priority_scored_opportunities - Automatically ranks opportunities by impact, urgency, and value. Use when advisor asks "what should I focus on" or "top priorities"
+2. Relationship Health: get_relationship_health - Dashboard showing client relationship health, risk levels, and value at risk. Use for "relationship health" or "at-risk clients"
+3. Opportunity Alerts: get_opportunity_alerts - Time-sensitive opportunities with deadlines. Use for "deadlines" or "expiring opportunities"
+4. Predictive Risks: get_predictive_risks - Identifies problems before they become critical. Use for "risks" or "potential problems"
+5. Contextual Briefing: get_contextual_briefing - Personalized morning briefing with top priorities. Use for "morning briefing" or "what should I do today"
+6. Client Clusters: get_client_clusters - Groups similar clients and identifies patterns. Use for "similar clients" or "patterns"
+7. Value Summary: get_value_summary - Quantifies value delivered to clients. Use for "value delivered" or "demonstrate value"
+
+When to use proactive features:
+- Advisor asks "what should I focus on" → Use get_priority_scored_opportunities
+- Advisor asks "who needs attention" → Use get_relationship_health
+- Advisor asks "what deadlines" → Use get_opportunity_alerts
+- Advisor asks "what risks" → Use get_predictive_risks
+- Advisor asks "morning briefing" → Use get_contextual_briefing
+- Advisor asks "show me patterns" → Use get_client_clusters
+- Advisor asks "value delivered" → Use get_value_summary
+
+ALWAYS prioritize proactive insights over reactive answers!""")
         
         # Prepare messages with system prompt
         prompt_messages = [system_prompt] + list(messages)
@@ -1943,6 +1971,691 @@ INNOVATION & IMPACT:
             # Try search as last resort
             logger.info("No direct match - trying search_clients")
             return self._search_clients(query)
+    
+    # ==================== PROACTIVE INTELLIGENCE FEATURES ====================
+    
+    def _get_priority_scored_opportunities(self, query: str = "") -> str:
+        """Get opportunities ranked by priority score (impact, urgency, value)"""
+        opportunities = []
+        
+        # Get all different opportunity types
+        reviews_due = self.compliance_tracker.get_reviews_due()
+        contact_gaps = self.compliance_tracker.get_contact_gaps()
+        milestones = self.compliance_tracker.get_upcoming_milestones()
+        life_events = self.compliance_tracker.get_life_events_requiring_attention()
+        
+        # Load client data for value calculation
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        # Score reviews due
+        for review in reviews_due[:30]:
+            client_id = review.get('client_id')
+            client = data["clients"].get(client_id, {})
+            portfolio_value = client.get("portfolio_value_gbp", 0)
+            
+            score = self._calculate_priority_score(
+                urgency=review.get('days_overdue', 0),
+                client_value=portfolio_value,
+                regulatory_risk=1.0 if review.get('days_overdue', 0) > 30 else 0.5,
+                time_required=30
+            )
+            opportunities.append({
+                'type': 'Review Due',
+                'client': review['client_name'],
+                'priority_score': score,
+                'urgency': review.get('days_overdue', 0),
+                'details': f"{review.get('days_overdue', 0)} days overdue",
+                'action': 'Schedule annual review'
+            })
+        
+        # Score contact gaps
+        for gap in contact_gaps[:20]:
+            client_id = gap.get('client_id')
+            client = data["clients"].get(client_id, {})
+            portfolio_value = client.get("portfolio_value_gbp", 0)
+            
+            score = self._calculate_priority_score(
+                urgency=gap.get('days_since_contact', 0) / 10,
+                client_value=portfolio_value,
+                regulatory_risk=0.3,
+                time_required=15
+            )
+            opportunities.append({
+                'type': 'Contact Gap',
+                'client': gap['client_name'],
+                'priority_score': score,
+                'urgency': gap.get('days_since_contact', 0),
+                'details': f"{gap.get('days_since_contact', 0)} days since contact",
+                'action': 'Reach out to reconnect'
+            })
+        
+        # Score milestones
+        for milestone in milestones[:15]:
+            client_id = milestone.get('client_id')
+            client = data["clients"].get(client_id, {})
+            portfolio_value = client.get("portfolio_value_gbp", 0)
+            days_until = milestone.get('days_until', 999)
+            
+            score = self._calculate_priority_score(
+                urgency=max(0, 90 - days_until),  # Higher urgency as deadline approaches
+                client_value=portfolio_value,
+                regulatory_risk=0.2,
+                time_required=45
+            )
+            opportunities.append({
+                'type': 'Milestone Birthday',
+                'client': milestone['client_name'],
+                'priority_score': score,
+                'urgency': days_until,
+                'details': f"Turning {milestone.get('turning_age', 0)} in {days_until} days",
+                'action': 'Plan milestone birthday strategy'
+            })
+        
+        # Score ISA/Annual Allowance opportunities
+        isa_result = self._get_clients_with_isa_allowance("")
+        if "clients" in isa_result.lower():
+            # Parse and score ISA opportunities
+            for line in isa_result.split('\n')[1:6]:  # Top 5
+                if '•' in line or '-' in line:
+                    parts = line.replace('•', '').replace('-', '').strip().split('£')
+                    if len(parts) > 1:
+                        client_name = parts[0].strip()
+                        allowance = float(parts[1].split()[0].replace(',', ''))
+                        client = next((c for c in data["clients"].values() if c['name'] == client_name), {})
+                        portfolio_value = client.get("portfolio_value_gbp", 0)
+                        
+                        score = self._calculate_priority_score(
+                            urgency=30,  # Tax year deadline approaching
+                            client_value=portfolio_value,
+                            regulatory_risk=0.1,
+                            time_required=20
+                        )
+                        opportunities.append({
+                            'type': 'ISA Allowance',
+                            'client': client_name,
+                            'priority_score': score,
+                            'urgency': 30,
+                            'details': f"£{allowance:,.0f} allowance remaining",
+                            'action': 'Discuss ISA contribution'
+                        })
+        
+        # Sort by priority score
+        opportunities.sort(key=lambda x: x['priority_score'], reverse=True)
+        
+        # Format output
+        output = "## 🎯 Top Priority Opportunities (Ranked by Impact)\n\n"
+        output += "**Score = (Urgency × Client Value × Risk) / Time Required**\n\n"
+        
+        for i, opp in enumerate(opportunities[:15], 1):
+            urgency_emoji = "🔴" if opp['urgency'] > 60 else "🟡" if opp['urgency'] > 30 else "🟢"
+            output += f"{i}. **{opp['client']}** - {opp['type']}\n"
+            output += f"   Priority Score: {opp['priority_score']:.1f} {urgency_emoji}\n"
+            output += f"   {opp['details']}\n"
+            output += f"   → Action: {opp['action']}\n\n"
+        
+        return output
+    
+    def _calculate_priority_score(self, urgency, client_value, regulatory_risk, time_required):
+        """Calculate priority score (0-100)"""
+        # Normalize urgency (0-10 scale)
+        urgency_score = min(urgency / 10, 10)
+        
+        # Normalize client value (0-10 scale, assuming max portfolio ~2M)
+        value_score = min(client_value / 200000, 10)
+        
+        # Risk multiplier (1.0 to 1.5)
+        risk_multiplier = 1 + (regulatory_risk * 0.5)
+        
+        # Time efficiency (less time = higher multiplier)
+        time_efficiency = max(0.5, 1.5 - (time_required / 120))
+        
+        # Final score
+        score = (urgency_score * 3 + value_score * 2) * risk_multiplier * time_efficiency
+        return round(score, 1)
+    
+    def _get_relationship_health_dashboard(self, query: str = "") -> str:
+        """Get relationship health for all clients with risk analysis"""
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        health_scores = []
+        
+        for client_id, client in data["clients"].items():
+            # Calculate engagement score (0-100)
+            days_since_contact = client.get("days_since_contact", 365)
+            engagement = max(0, 100 - (days_since_contact / 3.65))
+            
+            # Calculate risk factors
+            risk_factors = []
+            risk_count = 0
+            
+            if days_since_contact > 180:
+                risk_factors.append("Long contact gap")
+                risk_count += 1
+            if client.get("days_since_review", 0) > 450:
+                risk_factors.append("Overdue review")
+                risk_count += 1
+            if any(c.get("status") == "active" for c in client.get("concerns", [])):
+                risk_factors.append("Unresolved concerns")
+                risk_count += 1
+            if client.get("has_protection_gap", False):
+                risk_factors.append("Protection gap")
+                risk_count += 1
+            
+            # Determine risk level
+            if risk_count >= 2:
+                risk_level = "High"
+            elif risk_count == 1:
+                risk_level = "Medium"
+            else:
+                risk_level = "Low"
+            
+            # Calculate relationship momentum
+            momentum = "Stable"
+            if days_since_contact < 60 and client.get("days_since_review", 0) < 365:
+                momentum = "Improving"
+            elif days_since_contact > 180 or client.get("days_since_review", 0) > 450:
+                momentum = "Declining"
+            
+            # Calculate value at risk
+            portfolio_value = client.get("portfolio_value_gbp", 0)
+            value_at_risk = portfolio_value * (risk_count * 0.15) if risk_count > 0 else 0
+            
+            health_scores.append({
+                'client_name': client['name'],
+                'client_id': client_id,
+                'engagement_score': round(engagement, 1),
+                'risk_level': risk_level,
+                'risk_factors': risk_factors,
+                'risk_count': risk_count,
+                'momentum': momentum,
+                'value_at_risk': round(value_at_risk, 2),
+                'portfolio_value': portfolio_value
+            })
+        
+        # Sort by risk level and value at risk
+        health_scores.sort(key=lambda x: (
+            {'High': 3, 'Medium': 2, 'Low': 1}[x['risk_level']],
+            -x['value_at_risk']
+        ), reverse=True)
+        
+        # Format output
+        output = "## 💚 Relationship Health Dashboard\n\n"
+        
+        high_risk = [h for h in health_scores if h['risk_level'] == 'High']
+        medium_risk = [h for h in health_scores if h['risk_level'] == 'Medium']
+        low_risk = [h for h in health_scores if h['risk_level'] == 'Low']
+        
+        output += f"### 🔴 High Risk Clients ({len(high_risk)} - Need Immediate Attention)\n\n"
+        for client in high_risk[:10]:
+            output += f"**{client['client_name']}**\n"
+            output += f"- Engagement Score: {client['engagement_score']}/100\n"
+            output += f"- Risk Factors: {', '.join(client['risk_factors'])}\n"
+            output += f"- Value at Risk: £{client['value_at_risk']:,.0f}\n"
+            output += f"- Momentum: {client['momentum']}\n"
+            output += f"- Portfolio Value: £{client['portfolio_value']:,.0f}\n\n"
+        
+        if medium_risk:
+            output += f"\n### 🟡 Medium Risk Clients ({len(medium_risk)})\n\n"
+            for client in medium_risk[:5]:
+                output += f"**{client['client_name']}** - {', '.join(client['risk_factors'])}\n"
+                output += f"Engagement: {client['engagement_score']}/100 | Value at Risk: £{client['value_at_risk']:,.0f}\n\n"
+        
+        output += f"\n### 📊 Summary\n"
+        output += f"- Total Clients: {len(health_scores)}\n"
+        output += f"- High Risk: {len(high_risk)} ({len(high_risk)/len(health_scores)*100:.1f}%)\n"
+        output += f"- Medium Risk: {len(medium_risk)} ({len(medium_risk)/len(health_scores)*100:.1f}%)\n"
+        output += f"- Low Risk: {len(low_risk)} ({len(low_risk)/len(health_scores)*100:.1f}%)\n"
+        output += f"- Total Value at Risk: £{sum(h['value_at_risk'] for h in health_scores):,.0f}\n"
+        
+        return output
+    
+    def _get_opportunity_window_alerts(self, query: str = "") -> str:
+        """Get time-sensitive opportunities with countdown timers"""
+        from datetime import datetime, timedelta
+        
+        alerts = []
+        today = datetime.now()
+        
+        # Calculate tax year end (UK: April 5)
+        tax_year_end = datetime(today.year, 4, 5)
+        if today > tax_year_end:
+            tax_year_end = datetime(today.year + 1, 4, 5)
+        
+        days_to_tax_year_end = (tax_year_end - today).days
+        
+        # ISA Allowance opportunities
+        isa_clients = self._get_clients_with_isa_allowance("")
+        if isa_clients and "clients" in isa_clients.lower():
+            client_count = len([l for l in isa_clients.split('\n') if '•' in l or '-' in l])
+            alerts.append({
+                'type': 'ISA Allowance',
+                'deadline': tax_year_end.strftime('%Y-%m-%d'),
+                'days_remaining': days_to_tax_year_end,
+                'clients_affected': client_count,
+                'urgency': 'High' if days_to_tax_year_end < 30 else 'Medium' if days_to_tax_year_end < 90 else 'Low',
+                'action': 'Contact clients to use remaining ISA allowance before tax year end',
+                'value': 'Tax-free savings opportunity'
+            })
+        
+        # Annual Allowance opportunities
+        annual_clients = self._get_clients_with_annual_allowance("")
+        if annual_clients and "clients" in annual_clients.lower():
+            client_count = len([l for l in annual_clients.split('\n') if '•' in l or '-' in l])
+            alerts.append({
+                'type': 'Pension Annual Allowance',
+                'deadline': tax_year_end.strftime('%Y-%m-%d'),
+                'days_remaining': days_to_tax_year_end,
+                'clients_affected': client_count,
+                'urgency': 'High' if days_to_tax_year_end < 30 else 'Medium' if days_to_tax_year_end < 90 else 'Low',
+                'action': 'Discuss pension contributions before tax year end',
+                'value': 'Tax relief opportunity'
+            })
+        
+        # Milestone birthdays (next 90 days)
+        milestones = self.compliance_tracker.get_upcoming_milestones()
+        upcoming_milestones = [m for m in milestones if m.get('days_until', 999) <= 90]
+        if upcoming_milestones:
+            min_days = min([m.get('days_until', 0) for m in upcoming_milestones])
+            alerts.append({
+                'type': 'Milestone Birthdays',
+                'deadline': 'Next 90 days',
+                'days_remaining': min_days,
+                'clients_affected': len(upcoming_milestones),
+                'urgency': 'High' if min_days < 30 else 'Medium',
+                'action': 'Plan for milestone birthdays (pension access, tax planning)',
+                'value': 'Life stage planning opportunity'
+            })
+        
+        # Sort by urgency and days remaining
+        urgency_order = {'High': 3, 'Medium': 2, 'Low': 1}
+        alerts.sort(key=lambda x: (urgency_order[x['urgency']], x['days_remaining']))
+        
+        # Format output
+        output = "## ⏰ Opportunity Window Alerts\n\n"
+        output += "**Time-sensitive opportunities that require action**\n\n"
+        
+        for alert in alerts:
+            urgency_emoji = "🔴" if alert['urgency'] == 'High' else "🟡" if alert['urgency'] == 'Medium' else "🟢"
+            output += f"{urgency_emoji} **{alert['type']}**\n"
+            output += f"- Deadline: {alert['deadline']} ({alert['days_remaining']} days remaining)\n"
+            output += f"- Clients Affected: {alert['clients_affected']}\n"
+            output += f"- Value: {alert['value']}\n"
+            output += f"- Action: {alert['action']}\n\n"
+        
+        if not alerts:
+            output += "No urgent opportunity windows closing soon.\n"
+        
+        return output
+    
+    def _get_predictive_risk_detection(self, query: str = "") -> str:
+        """Identify potential problems before they become issues"""
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        risks = {
+            'compliance': [],
+            'relationship': [],
+            'financial': [],
+            'opportunity': []
+        }
+        
+        for client_id, client in data["clients"].items():
+            client_name = client['name']
+            portfolio_value = client.get("portfolio_value_gbp", 0)
+            
+            # Compliance risks
+            if client.get("days_since_review", 0) > 400:
+                risks['compliance'].append({
+                    'client': client_name,
+                    'risk': 'Review overdue',
+                    'severity': 'High' if client.get("days_since_review", 0) > 450 else 'Medium',
+                    'days': client.get("days_since_review", 0),
+                    'impact': 'FCA compliance issue'
+                })
+            
+            # Relationship risks
+            if client.get("days_since_contact", 0) > 180:
+                risks['relationship'].append({
+                    'client': client_name,
+                    'risk': 'Contact gap',
+                    'severity': 'High' if client.get("days_since_contact", 0) > 270 else 'Medium',
+                    'days': client.get("days_since_contact", 0),
+                    'impact': 'Relationship deterioration risk'
+                })
+            
+            # Financial risks
+            if client.get("withdrawal_rate_percent", 0) > 4 and client.get("is_retired", False):
+                risks['financial'].append({
+                    'client': client_name,
+                    'risk': 'High withdrawal rate',
+                    'severity': 'High',
+                    'rate': client.get("withdrawal_rate_percent", 0),
+                    'impact': 'Portfolio sustainability risk'
+                })
+            
+            if client.get("has_protection_gap", False) and client.get("num_dependents", 0) > 0:
+                risks['financial'].append({
+                    'client': client_name,
+                    'risk': 'Protection gap',
+                    'severity': 'Medium',
+                    'dependents': client.get("num_dependents", 0),
+                    'impact': 'Family financial security risk'
+                })
+            
+            # Opportunity risks (missing deadlines)
+            if client.get("isa_allowance_available", 0) > 5000:
+                from datetime import datetime
+                today = datetime.now()
+                tax_year_end = datetime(today.year, 4, 5)
+                if today > tax_year_end:
+                    tax_year_end = datetime(today.year + 1, 4, 5)
+                days_remaining = (tax_year_end - today).days
+                
+                if days_remaining < 60:
+                    risks['opportunity'].append({
+                        'client': client_name,
+                        'risk': 'ISA deadline approaching',
+                        'severity': 'Medium',
+                        'allowance': client.get("isa_allowance_available", 0),
+                        'days': days_remaining,
+                        'impact': 'Missing tax-free savings opportunity'
+                    })
+        
+        # Format output
+        output = "## 🚨 Predictive Risk Detection\n\n"
+        output += "**Identifying problems before they become critical**\n\n"
+        
+        total_risks = sum(len(r) for r in risks.values())
+        
+        if total_risks == 0:
+            output += "✅ No significant risks detected. Your client book is in good shape!\n"
+            return output
+        
+        # Compliance risks
+        if risks['compliance']:
+            output += f"### 🔴 Compliance Risks ({len(risks['compliance'])})\n\n"
+            for risk in risks['compliance'][:10]:
+                output += f"**{risk['client']}** - {risk['risk']}\n"
+                output += f"- Severity: {risk['severity']} | {risk['days']} days\n"
+                output += f"- Impact: {risk['impact']}\n\n"
+        
+        # Relationship risks
+        if risks['relationship']:
+            output += f"### 💔 Relationship Risks ({len(risks['relationship'])})\n\n"
+            for risk in risks['relationship'][:10]:
+                output += f"**{risk['client']}** - {risk['risk']}\n"
+                output += f"- Severity: {risk['severity']} | {risk['days']} days since contact\n"
+                output += f"- Impact: {risk['impact']}\n\n"
+        
+        # Financial risks
+        if risks['financial']:
+            output += f"### 💰 Financial Risks ({len(risks['financial'])})\n\n"
+            for risk in risks['financial'][:10]:
+                output += f"**{risk['client']}** - {risk['risk']}\n"
+                if 'rate' in risk:
+                    output += f"- Withdrawal Rate: {risk['rate']}%\n"
+                if 'dependents' in risk:
+                    output += f"- Dependents: {risk['dependents']}\n"
+                output += f"- Impact: {risk['impact']}\n\n"
+        
+        # Opportunity risks
+        if risks['opportunity']:
+            output += f"### ⏰ Opportunity Risks ({len(risks['opportunity'])})\n\n"
+            output += "**Missing time-sensitive opportunities**\n\n"
+            for risk in risks['opportunity'][:10]:
+                output += f"**{risk['client']}** - {risk['risk']}\n"
+                output += f"- Allowance: £{risk.get('allowance', 0):,.0f} | {risk.get('days', 0)} days remaining\n"
+                output += f"- Impact: {risk['impact']}\n\n"
+        
+        output += f"\n### 📊 Risk Summary\n"
+        output += f"- Total Risks Detected: {total_risks}\n"
+        output += f"- High Severity: {sum(1 for r in risks.values() for item in r if item.get('severity') == 'High')}\n"
+        output += f"- Medium Severity: {sum(1 for r in risks.values() for item in r if item.get('severity') == 'Medium')}\n"
+        
+        return output
+    
+    def _get_contextual_morning_briefing(self, query: str = "") -> str:
+        """Get personalized contextual morning briefing"""
+        from datetime import datetime
+        
+        today = datetime.now()
+        day_name = today.strftime('%A')
+        
+        # Get standard briefing
+        briefing = self.compliance_tracker.get_daily_briefing()
+        
+        # Get priority opportunities
+        priority_opps = self._get_priority_scored_opportunities("")
+        
+        # Get opportunity alerts
+        alerts = self._get_opportunity_window_alerts("")
+        
+        # Get top risks
+        risks = self._get_predictive_risk_detection("")
+        
+        # Format contextual briefing
+        output = f"## ☕ Good {day_name} Morning Briefing\n\n"
+        output += f"**{today.strftime('%B %d, %Y')}**\n\n"
+        
+        output += "### 🎯 Your Top 3 Priorities Today\n\n"
+        # Extract top 3 from priority opportunities
+        lines = priority_opps.split('\n')
+        count = 0
+        for line in lines:
+            if line.strip().startswith(('1.', '2.', '3.')) and '**' in line:
+                output += line + '\n'
+                count += 1
+                if count >= 3:
+                    break
+        output += "\n"
+        
+        output += "### ⚠️ Critical Items Requiring Attention\n\n"
+        summary = briefing["summary"]
+        if summary['total_reviews_due'] > 0:
+            output += f"🔴 **{summary['total_reviews_due']} Reviews Overdue** - Compliance risk\n"
+        if summary['total_contact_gaps'] > 10:
+            output += f"🟡 **{summary['total_contact_gaps']} Contact Gaps** - Relationship risk\n"
+        if summary['total_overdue_actions'] > 0:
+            output += f"🟠 **{summary['total_overdue_actions']} Overdue Actions** - Follow-up needed\n"
+        output += "\n"
+        
+        output += "### ⏰ Time-Sensitive Opportunities\n\n"
+        # Extract first alert
+        alert_lines = alerts.split('\n')
+        for i, line in enumerate(alert_lines[:10]):
+            if '🔴' in line or '🟡' in line:
+                output += line + '\n'
+                # Get next few lines for context
+                for j in range(1, 5):
+                    if i + j < len(alert_lines):
+                        output += alert_lines[i + j] + '\n'
+                break
+        output += "\n"
+        
+        output += "### 📊 Quick Stats\n\n"
+        output += f"- Reviews Due: {summary['total_reviews_due']}\n"
+        output += f"- Contact Gaps: {summary['total_contact_gaps']}\n"
+        output += f"- Milestones: {summary['total_milestones']}\n"
+        output += f"- Life Events: {summary['total_life_events']}\n"
+        output += f"- Concerns: {summary['total_concerns']}\n"
+        output += f"- Overdue Actions: {summary['total_overdue_actions']}\n\n"
+        
+        output += "### 💡 Proactive Suggestions\n\n"
+        if summary['total_milestones'] > 0:
+            output += f"- {summary['total_milestones']} clients have milestone birthdays coming up - great opportunity for planning discussions\n"
+        if summary['total_life_events'] > 0:
+            output += f"- {summary['total_life_events']} clients have life events - check if they need support\n"
+        if summary['total_concerns'] > 0:
+            output += f"- {summary['total_concerns']} unresolved concerns - follow up to show you're listening\n"
+        
+        return output
+    
+    def _get_client_clusters(self, query: str = "") -> str:
+        """Group clients by similar characteristics and identify patterns"""
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        clusters = {
+            'approaching_retirement': [],
+            'young_professionals': [],
+            'business_owners': [],
+            'high_net_worth': [],
+            'at_risk': []
+        }
+        
+        for client_id, client in data["clients"].items():
+            age = client.get('age', 0)
+            portfolio_value = client.get("portfolio_value_gbp", 0)
+            is_business_owner = client.get('is_business_owner', False)
+            days_since_contact = client.get('days_since_contact', 0)
+            days_since_review = client.get('days_since_review', 0)
+            
+            # Cluster logic
+            if 60 <= age <= 65 and portfolio_value > 200000:
+                clusters['approaching_retirement'].append({
+                    'name': client['name'],
+                    'age': age,
+                    'portfolio_value': portfolio_value,
+                    'has_estate_planning': client.get('has_estate_planning', False)
+                })
+            
+            if 30 <= age <= 40 and portfolio_value < 100000:
+                clusters['young_professionals'].append({
+                    'name': client['name'],
+                    'age': age,
+                    'has_protection': client.get('has_life_insurance', False),
+                    'num_dependents': client.get('num_dependents', 0)
+                })
+            
+            if is_business_owner:
+                clusters['business_owners'].append({
+                    'name': client['name'],
+                    'business_type': client.get('business_type', 'Unknown'),
+                    'portfolio_value': portfolio_value
+                })
+            
+            if portfolio_value > 1000000:
+                clusters['high_net_worth'].append({
+                    'name': client['name'],
+                    'portfolio_value': portfolio_value,
+                    'has_estate_planning': client.get('has_estate_planning', False)
+                })
+            
+            if days_since_contact > 180 or days_since_review > 450:
+                clusters['at_risk'].append({
+                    'name': client['name'],
+                    'days_since_contact': days_since_contact,
+                    'days_since_review': days_since_review
+                })
+        
+        # Format output
+        output = "## 🎯 Client Clusters & Pattern Recognition\n\n"
+        
+        if clusters['approaching_retirement']:
+            output += f"### 👴 Approaching Retirement (60-65, High Portfolio Value)\n"
+            output += f"**{len(clusters['approaching_retirement'])} clients**\n\n"
+            no_estate = [c for c in clusters['approaching_retirement'] if not c['has_estate_planning']]
+            if no_estate:
+                output += f"⚠️ **{len(no_estate)} clients without estate planning** - High-value opportunity\n"
+                for client in no_estate[:5]:
+                    output += f"- {client['name']} (£{client['portfolio_value']:,.0f})\n"
+            output += "\n"
+        
+        if clusters['young_professionals']:
+            output += f"### 👔 Young Professionals (30-40, Building Wealth)\n"
+            output += f"**{len(clusters['young_professionals'])} clients**\n\n"
+            no_protection = [c for c in clusters['young_professionals'] if c['num_dependents'] > 0 and not c['has_protection']]
+            if no_protection:
+                output += f"⚠️ **{len(no_protection)} clients with dependents but no protection**\n"
+                for client in no_protection[:5]:
+                    output += f"- {client['name']} ({client['num_dependents']} dependents)\n"
+            output += "\n"
+        
+        if clusters['business_owners']:
+            output += f"### 🏢 Business Owners\n"
+            output += f"**{len(clusters['business_owners'])} clients**\n\n"
+            for client in clusters['business_owners'][:5]:
+                output += f"- {client['name']} ({client['business_type']})\n"
+            output += "\n"
+        
+        if clusters['high_net_worth']:
+            output += f"### 💎 High Net Worth (>£1M)\n"
+            output += f"**{len(clusters['high_net_worth'])} clients**\n\n"
+            no_estate = [c for c in clusters['high_net_worth'] if not c['has_estate_planning']]
+            if no_estate:
+                output += f"⚠️ **{len(no_estate)} clients without estate planning**\n"
+            output += "\n"
+        
+        if clusters['at_risk']:
+            output += f"### 🔴 At-Risk Clients (Contact Gaps or Overdue Reviews)\n"
+            output += f"**{len(clusters['at_risk'])} clients need immediate attention**\n\n"
+            for client in clusters['at_risk'][:10]:
+                output += f"- {client['name']} (Contact: {client['days_since_contact']}d, Review: {client['days_since_review']}d)\n"
+            output += "\n"
+        
+        return output
+    
+    def _get_value_demonstration_summary(self, query: str = "") -> str:
+        """Track and quantify value delivered to clients"""
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        total_isa_allowance_available = 0
+        total_annual_allowance_available = 0
+        protection_gaps_filled = 0
+        clients_with_estate_planning = 0
+        total_portfolio_value = 0
+        
+        for client_id, client in data["clients"].items():
+            total_isa_allowance_available += client.get('isa_allowance_available', 0)
+            total_annual_allowance_available += client.get('annual_allowance_available', 0)
+            total_portfolio_value += client.get('portfolio_value_gbp', 0)
+            
+            if client.get('has_life_insurance') and client.get('num_dependents', 0) > 0:
+                protection_gaps_filled += 1
+            
+            if client.get('has_estate_planning'):
+                clients_with_estate_planning += 1
+        
+        # Calculate potential tax savings
+        # ISA: Assume 5% return, 20% tax on interest/dividends
+        isa_tax_savings = (total_isa_allowance_available * 0.05) * 0.20
+        
+        # Pension: Average 25% tax relief
+        pension_tax_relief = total_annual_allowance_available * 0.25
+        
+        total_value = isa_tax_savings + pension_tax_relief
+        
+        # Get compliance stats
+        reviews_due = self.compliance_tracker.get_reviews_due()
+        compliance_rate = ((200 - len(reviews_due)) / 200 * 100) if len(reviews_due) < 200 else 0
+        
+        output = "## 📊 Value Demonstration Summary\n\n"
+        output += "### 💰 Tax Savings & Optimizations\n\n"
+        output += f"- **ISA Allowance Available**: £{total_isa_allowance_available:,.0f}\n"
+        output += f"- **Potential Annual Tax Savings**: £{isa_tax_savings:,.0f}/year\n"
+        output += f"- **Pension Annual Allowance Available**: £{total_annual_allowance_available:,.0f}\n"
+        output += f"- **Potential Tax Relief**: £{pension_tax_relief:,.0f}\n"
+        output += f"- **Total Potential Annual Value**: £{total_value:,.0f}\n\n"
+        
+        output += "### 🛡️ Risk Mitigation\n\n"
+        output += f"- **Clients with Protection Coverage**: {protection_gaps_filled}\n"
+        output += f"- **Clients with Estate Planning**: {clients_with_estate_planning}\n"
+        output += f"- **Total Portfolio Value Managed**: £{total_portfolio_value:,.0f}\n\n"
+        
+        output += "### ✅ Compliance & Relationship Management\n\n"
+        output += f"- **Reviews Completed on Time**: {200 - len(reviews_due)}/200\n"
+        output += f"- **Compliance Rate**: {compliance_rate:.1f}%\n"
+        output += f"- **Active Client Relationships**: 200\n\n"
+        
+        output += "### 📈 Key Metrics\n\n"
+        output += f"- Average Portfolio Value: £{total_portfolio_value/200:,.0f}\n"
+        output += f"- Average ISA Allowance Available: £{total_isa_allowance_available/200:,.0f}\n"
+        output += f"- Average Pension Allowance Available: £{total_annual_allowance_available/200:,.0f}\n"
+        
+        return output
 
 
 if __name__ == "__main__":

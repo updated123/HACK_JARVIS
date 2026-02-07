@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 JARVIS_AVAILABLE = False
 JarvisAgent = None
 try:
-    from jarvis_graph import JarvisAgent
+    from jarvis_agent import JarvisAgent
     JARVIS_AVAILABLE = True
 except (ImportError, ValueError, Exception) as e:
     error_msg = str(e)
@@ -142,7 +142,7 @@ def main():
         # Now try to import JarvisAgent again if it failed before
         if not JARVIS_AVAILABLE or JarvisAgent is None:
             try:
-                from jarvis_graph import JarvisAgent
+                from jarvis_agent import JarvisAgent
                 JARVIS_AVAILABLE = True
             except Exception as e:
                 pass

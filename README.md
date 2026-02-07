@@ -127,7 +127,7 @@ Your app will be live at: `https://your-app-name.streamlit.app`
 HACK_JARVIS/
 ├── app.py                      # Streamlit web interface
 ├── main.py                     # CLI interface
-├── jarvis_graph.py             # LangGraph workflow for chatbot agent
+├── jarvis_agent.py             # LangGraph workflow for chatbot agent
 ├── vector_store.py             # Vector store management
 ├── compliance_tracker.py       # Compliance tracking logic
 ├── data_generator.py           # Mock data generator

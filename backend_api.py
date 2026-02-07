@@ -87,7 +87,7 @@ def initialize_backend():
         print("✓ Compliance tracker initialized")
         
         # Step 5: Initialize JarvisAgent (now that everything is ready)
-        from jarvis_graph import JarvisAgent
+        from jarvis_agent import JarvisAgent
         print("Initializing JarvisAgent...")
         print(f"  - Endpoint: {config.AZURE_OPENAI_ENDPOINT[:50]}...")
         print(f"  - Deployment: {config.AZURE_OPENAI_DEPLOYMENT}")
@@ -202,7 +202,7 @@ async def health():
     if not jarvis_agent:
         # Check if we can import the module
         try:
-            from jarvis_graph import JarvisAgent as TestAgent
+            from jarvis_agent import JarvisAgent as TestAgent
             status["jarvis_import"] = "success"
         except ImportError as e:
             status["jarvis_import"] = f"failed: {str(e)}"
