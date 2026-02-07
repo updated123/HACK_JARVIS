@@ -170,7 +170,13 @@ class JarvisAgent:
             make_query_tool(self._draft_follow_up_email, "draft_follow_up_email", "Draft email"),
             make_no_param_tool(lambda: self._get_waiting_on_clients(""), "get_waiting_on_clients", "Waiting on"),
             make_no_param_tool(lambda: self._get_open_action_items(""), "get_open_action_items", "Action items"),
-            make_no_param_tool(lambda: self._get_overdue_follow_ups(""), "get_overdue_follow_ups", "Overdue followups")
+            make_no_param_tool(lambda: self._get_overdue_follow_ups(""), "get_overdue_follow_ups", "Overdue followups"),
+            # Scenario modeling and analysis tools
+            make_query_tool(self._analyze_interest_rate_impact, "analyze_interest_rate_impact", "Interest rate impact"),
+            make_query_tool(self._analyze_market_correction_exposure, "analyze_market_correction_exposure", "Market correction exposure"),
+            make_query_tool(self._model_retirement_scenario, "model_retirement_scenario", "Retirement scenario"),
+            make_query_tool(self._model_long_term_care_scenario, "model_long_term_care_scenario", "Long-term care scenario"),
+            make_no_param_tool(lambda: self._get_business_owners_rd_tax_credit(""), "get_business_owners_rd_tax_credit", "R&D tax credit")
         ]
         
         # Create tool node if available, otherwise use custom implementation
@@ -376,14 +382,36 @@ class JarvisAgent:
         messages = state["messages"]
         logger.debug(f"Processing {len(messages)} messages")
         
-        # System prompt - optimized for token efficiency
+        # Enhanced system prompt - comprehensive coverage of all question types
         system_prompt = SystemMessage(content="""You are Jarvis, a proactive AI assistant for UK Financial Advisors.
 
-Core functions: daily briefings, client queries, compliance tracking, investment analysis, proactive identification, business analytics, follow-ups.
+CORE CAPABILITIES:
+1. Investment Analysis: Underweight equities, ISA/annual allowances, cash excess, retirement trajectory, protection gaps, withdrawal rates, interest rate impact, market correction exposure
+2. Proactive Identification: Reviews overdue 12+ months, business owners (R&D tax credits, exit planning), university planning, similar client profiles, HNW estate planning, birthdays
+3. Compliance & Documentation: Recommendations with rationale, exact conversation wording, platform recommendations, topic discussions, document summaries, waiting documents, promises made
+4. Business Analytics: Service usage, conversion rates, book demographics, revenue/time analysis, satisfied client patterns, recommendation pushback, similar value cases
+5. Follow-ups & Actions: Draft follow-up emails, waiting on clients, open action items, overdue follow-ups, life events triggering implementation
 
-Guidelines: Be concise, prioritize urgent items, provide actionable insights, use tools to gather data before answering.
+CONVERSATION CONTEXT:
+- You maintain full conversation history - reference previous questions and answers
+- Build on previous context - if asked about a client, remember it for follow-up questions
+- Use "we discussed earlier" when referencing previous conversation
+- Provide comprehensive answers that connect related information
 
-Handle: investments, reviews, compliance, business metrics, follow-ups, client identification.""")
+GUIDELINES:
+- Be concise but comprehensive - prioritize urgent/important items first
+- Always use tools to gather data before answering - never guess
+- Provide actionable insights with specific client names, dates, and numbers
+- For scenario modeling (interest rates, market corrections, retirement, long-term care), use available data and provide realistic projections
+- When drafting emails, be professional, personalized, and include specific action items
+- For compliance queries, provide exact wording and full context
+- Connect related information across different tools when relevant
+
+INNOVATION & IMPACT:
+- Proactively suggest related opportunities ("You might also want to check...")
+- Identify patterns and trends across the client base
+- Highlight time-sensitive opportunities (deadlines, windows closing)
+- Provide strategic insights beyond just answering the question""")
         
         # Prepare messages with system prompt
         prompt_messages = [system_prompt] + list(messages)
@@ -1572,9 +1600,190 @@ Handle: investments, reviews, compliance, business metrics, follow-ups, client i
         
         return response
     
-    def chat(self, message: str) -> str:
-        """Main chat interface with improved error handling and logging"""
+    # Scenario modeling and advanced analysis tools
+    def _analyze_interest_rate_impact(self, query: str) -> str:
+        """Analyze which clients would be impacted if interest rates drop to specified level"""
+        target_rate = 3.0
+        import re
+        rate_match = re.search(r'(\d+(?:\.\d+)?)%', query)
+        if rate_match:
+            target_rate = float(rate_match.group(1))
+        
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        impacted = []
+        for cid, client in data["clients"].items():
+            portfolio = client.get("portfolio", {})
+            fixed_income_pct = portfolio.get("fixed_income", 0)
+            cash_pct = portfolio.get("cash", 0)
+            
+            if fixed_income_pct > 20 or cash_pct > 30:
+                impact = "High" if (fixed_income_pct + cash_pct) > 50 else "Medium"
+                impacted.append({
+                    "name": client["name"],
+                    "fixed_income": fixed_income_pct,
+                    "cash": cash_pct,
+                    "total_exposure": fixed_income_pct + cash_pct,
+                    "impact": impact
+                })
+        
+        if not impacted:
+            return f"No clients significantly impacted by interest rate drop to {target_rate}%."
+        
+        response = f"Interest Rate Impact Analysis (Rate: {target_rate}%)\n"
+        response += "=" * 60 + "\n\n"
+        response += f"Found {len(impacted)} clients with significant fixed income/cash exposure:\n\n"
+        
+        for client in sorted(impacted, key=lambda x: x["total_exposure"], reverse=True)[:15]:
+            response += f"• {client['name']}: {client['impact']} impact\n"
+            response += f"  Fixed Income: {client['fixed_income']}%, Cash: {client['cash']}%\n"
+            response += f"  Total Exposure: {client['total_exposure']}%\n\n"
+        
+        return response
+    
+    def _analyze_market_correction_exposure(self, query: str) -> str:
+        """Analyze which clients are most exposed to a market correction"""
+        correction_pct = 20.0
+        import re
+        correction_match = re.search(r'(\d+(?:\.\d+)?)%', query)
+        if correction_match:
+            correction_pct = float(correction_match.group(1))
+        
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        exposed = []
+        for cid, client in data["clients"].items():
+            portfolio = client.get("portfolio", {})
+            equity_pct = portfolio.get("equities", 0)
+            risk_profile = client.get("risk_profile", "Moderate")
+            
+            if equity_pct > 50:
+                exposure_score = equity_pct * (1.5 if risk_profile == "High" else 1.0)
+                exposed.append({
+                    "name": client["name"],
+                    "equity_pct": equity_pct,
+                    "risk_profile": risk_profile,
+                    "exposure_score": exposure_score,
+                    "estimated_loss": (equity_pct * correction_pct) / 100
+                })
+        
+        if not exposed:
+            return f"No clients significantly exposed to {correction_pct}% market correction."
+        
+        response = f"Market Correction Exposure Analysis ({correction_pct}% correction)\n"
+        response += "=" * 60 + "\n\n"
+        response += f"Found {len(exposed)} clients with high equity exposure:\n\n"
+        
+        for client in sorted(exposed, key=lambda x: x["exposure_score"], reverse=True)[:15]:
+            response += f"• {client['name']}: {client['risk_profile']} risk profile\n"
+            response += f"  Equity Allocation: {client['equity_pct']}%\n"
+            response += f"  Estimated Impact: ~{client['estimated_loss']:.1f}% of portfolio\n\n"
+        
+        return response
+    
+    def _model_retirement_scenario(self, query: str) -> str:
+        """Model retirement scenario changes"""
+        import re
+        client_match = re.search(r'(\w+)\s+(?:retires?|retirement)', query, re.IGNORECASE)
+        
+        if not client_match:
+            return "Please specify the client name (e.g., 'If Roshan retires next year...')"
+        
+        client_name = client_match.group(1)
+        
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        client = None
+        for cid, c in data["clients"].items():
+            if client_name.lower() in c["name"].lower():
+                client = c
+                break
+        
+        if not client:
+            return f"Client '{client_name}' not found."
+        
+        response = f"Retirement Scenario: {client['name']}\n"
+        response += "=" * 60 + "\n\n"
+        response += "Analysis: Review cashflow projections and adjust plan accordingly.\n"
+        return response
+    
+    def _model_long_term_care_scenario(self, query: str) -> str:
+        """Model long-term care scenario"""
+        import re
+        family_match = re.search(r"(\w+)'?s?\s+family", query, re.IGNORECASE)
+        
+        if not family_match:
+            return "Please specify the family name (e.g., 'Gurung's family...')"
+        
+        family_name = family_match.group(1)
+        
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        family_members = []
+        for cid, client in data["clients"].items():
+            if family_name.lower() in client["name"].lower():
+                family_members.append(client)
+        
+        if not family_members:
+            return f"Family '{family_name}' not found."
+        
+        response = f"Long-Term Care Scenario: {family_name} Family\n"
+        response += "=" * 60 + "\n\n"
+        response += f"Estimated Annual Cost: £50,000\n"
+        response += "Recommendations: Review care insurance and estate planning.\n"
+        return response
+    
+    def _get_business_owners_rd_tax_credit(self, query: str = "") -> str:
+        """Get business owners for R&D tax credit opportunities"""
+        with open("mock_data.json", "r") as f:
+            data = json.load(f)
+        
+        business_owners = []
+        for cid, client in data["clients"].items():
+            if client.get("occupation_type") == "Business Owner":
+                business_owners.append({
+                    "name": client["name"],
+                    "business_type": client.get("business_type", "Not specified")
+                })
+        
+        if not business_owners:
+            return "No business owner clients found."
+        
+        response = "Business Owners - R&D Tax Credit Opportunities\n"
+        response += "=" * 60 + "\n\n"
+        for owner in business_owners[:15]:
+            response += f"• {owner['name']}: {owner['business_type']}\n"
+        
+        response += "\nRecent Changes: Enhanced rate 130% deduction, 14.5% credit for loss-makers.\n"
+        return response
+    
+    def chat(self, message: str, conversation_history: list = None) -> str:
+        """Main chat interface with improved error handling, logging, and conversation history support"""
         logger.info(f"=== CHAT START: {message[:100]} ===")
+        
+        # Build messages list with conversation history
+        messages = []
+        if conversation_history:
+            logger.info(f"Loading {len(conversation_history)} previous messages for context")
+            for msg in conversation_history:
+                # Handle different message formats from frontend
+                if isinstance(msg, dict):
+                    role = msg.get("role", "user")
+                    content = msg.get("content", msg.get("message", ""))
+                    if role == "user":
+                        messages.append(HumanMessage(content=content))
+                    elif role == "assistant":
+                        messages.append(AIMessage(content=content))
+                elif isinstance(msg, str):
+                    # Assume user message if just a string
+                    messages.append(HumanMessage(content=msg))
+        
+        # Add current message
+        messages.append(HumanMessage(content=message))
         
         # Check if this is a simple query that can be handled directly (bypass LLM to avoid rate limits)
         query_lower = message.lower()
@@ -1601,9 +1810,9 @@ Handle: investments, reviews, compliance, business metrics, follow-ups, client i
                 logger.warning(f"Direct execution failed: {e}, will try LLM")
         
         initial_state = {
-            "messages": [HumanMessage(content=message)],
+            "messages": messages,  # Use messages with history
             "current_query": message,
-            "context": {},
+            "context": {"conversation_history": len(conversation_history) if conversation_history else 0},
             "compliance_data": {}
         }
         

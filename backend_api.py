@@ -141,6 +141,7 @@ async def startup_event():
 # Request/Response models
 class ChatRequest(BaseModel):
     message: str
+    conversation_history: list = []  # List of previous messages for context
 
 class ChatResponse(BaseModel):
     response: str
@@ -296,7 +297,7 @@ async def test_azure():
 # Chat endpoint
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Chat with Jarvis"""
+    """Chat with Jarvis with conversation history support"""
     if not jarvis_agent:
         error_detail = "Jarvis agent not initialized"
         if init_error_message:
@@ -306,7 +307,8 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=503, detail=error_detail)
     
     try:
-        response = jarvis_agent.chat(request.message)
+        # Use conversation history if provided
+        response = jarvis_agent.chat(request.message, conversation_history=request.conversation_history)
         return ChatResponse(response=response, status="success")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing chat: {str(e)}")
