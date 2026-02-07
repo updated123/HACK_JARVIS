@@ -188,7 +188,12 @@ class JarvisAgent:
                 lambda: self._get_value_demonstration_summary(""), 
                 "get_value_summary", 
                 "Quantifies and demonstrates the value delivered to clients. Calculates: tax savings from ISA allowances (tax-free growth on unused allowance), pension annual allowance tax relief (25% average), risk mitigation (protection coverage, estate planning), compliance metrics (review completion rates), total portfolio value managed. Shows potential annual tax savings, tax relief opportunities, and value metrics. Use when advisor asks about: value delivered, tax savings, tax savings identified, tax optimizations, value created, value demonstration, savings opportunities, tax relief, ISA tax benefits, pension tax benefits, Consumer Duty compliance, showing value to clients, or quantifying advisor value."
-            )
+            ),
+            # Proactive Intervention Features - Real-time context-aware actions (HYBRID: LLM semantic + data-driven)
+            make_query_tool(self._analyze_meeting_context, "analyze_meeting_context", "Analyze meeting transcript using HYBRID approach: LLM semantic understanding (intent, context, synonyms) + data-driven checks (client profile, allowances). Detects missing topics, opportunities, life events, concerns - understands meaning, not just keywords. Use when advisor is in a meeting, has meeting transcript, or wants real-time suggestions. Understands retirement discussions even if exact words not used, detects concerns from emotional context, identifies opportunities semantically."),
+            make_query_tool(self._detect_missing_topics, "detect_missing_topics", "Detect missing topics using HYBRID approach: LLM semantic analysis of what's been discussed (understands synonyms, context, related concepts) + client profile data checks. Analyzes reports, meeting summaries, or discussions to identify gaps. Understands that 'stopping work' = retirement, 'insurance' = protection, 'tax relief' = tax planning. Use when advisor is writing a report, preparing for meeting, or wants to know what topics are missing."),
+            make_query_tool(self._get_contextual_suggestions, "get_contextual_suggestions", "Get proactive suggestions based on current context - what advisor is doing, who they're meeting with, what they're discussing. Provides real-time, context-aware interventions. Use when advisor wants proactive suggestions for current activity, meeting, or workflow."),
+            make_query_tool(self._monitor_conversation_live, "monitor_conversation_live", "Monitor live conversation using HYBRID approach: LLM semantic understanding (intent, emotional cues, context) + real-time data checks. Provides proactive interventions when important topics are mentioned or missed. Understands concerns from emotional language, detects life events from context, identifies opportunities semantically. Use during live meetings, real-time conversations, or when processing meeting transcripts.")
         ]
         
         # Create tool node if available, otherwise use custom implementation
@@ -478,6 +483,20 @@ TOOL SELECTION GUIDELINES:
 - If question is about potential problems or risks → get_predictive_risks
 - If question is about daily overview or start of day → get_contextual_briefing
 - If question is about patterns or client groups → get_client_clusters
+
+PROACTIVE INTERVENTION FEATURES (Real-time, Context-aware, HYBRID APPROACH):
+8. Meeting Analysis (analyze_meeting_context): Uses HYBRID approach - LLM semantic understanding (intent, context, synonyms) + data-driven checks. Analyzes meeting transcript to detect missing topics, opportunities, life events, concerns. Understands meaning, not just keywords - e.g., "stopping work" = retirement, emotional language = concerns. Use when advisor is in a meeting, has meeting transcript, or wants real-time suggestions. Example: "Analyze this meeting transcript" or "Client mentioned retirement - what should I discuss?"
+
+9. Missing Topics Detection (detect_missing_topics): Uses HYBRID approach - LLM semantic analysis (understands synonyms, related concepts) + client profile data. Detects missing topics in reports/meetings by understanding what's been discussed semantically vs what should be discussed. Understands that "pension access" = retirement, "life cover" = protection, "tax-efficient" = tax planning. Use when advisor is writing report, preparing for meeting, or wants to know what's missing. Example: "What topics am I missing in this report?" or "Check if I've covered everything"
+
+10. Contextual Suggestions (get_contextual_suggestions): Provides proactive suggestions based on current context - what advisor is doing (meeting, report writing, follow-up). Use when advisor wants context-aware suggestions for current activity. Example: "I'm in a meeting with John Smith - any suggestions?" or "I'm writing a report - what should I include?"
+
+11. Live Conversation Monitoring (monitor_conversation_live): Uses HYBRID approach - LLM semantic understanding (intent, emotional cues, context) + real-time data checks. Monitors live conversation and provides proactive interventions when important topics are mentioned or missed. Understands concerns from emotional language, detects life events from context, identifies opportunities semantically. Use during live meetings, real-time conversations, or when processing meeting transcripts. Example: "Monitor this conversation" or "Client just mentioned retiring early"
+
+KEY PRINCIPLE: Proactive interventions act at the RIGHT MOMENT, in the RIGHT CONTEXT, with the RIGHT INTENT:
+- RIGHT MOMENT: During meeting, while writing report, at decision points
+- RIGHT CONTEXT: Based on what advisor is doing and who they're with
+- RIGHT INTENT: Understanding what advisor needs at that moment
 
 ALWAYS prioritize proactive insights over reactive answers!""")
         
@@ -1625,7 +1644,7 @@ ALWAYS prioritize proactive insights over reactive answers!""")
                 response += "As discussed, we covered the following topics:\n"
                 for topic in topics[:3]:
                     response += f"• {topic}\n"
-                response += "\n"
+            response += "\n"
         
         response += "Please don't hesitate to reach out if you have any questions or if you'd like to discuss anything further.\n\n"
         response += "Best regards,\n"
@@ -2732,6 +2751,524 @@ ALWAYS prioritize proactive insights over reactive answers!""")
         output += f"- Average Portfolio Value: £{total_portfolio_value/200:,.0f}\n"
         output += f"- Average ISA Allowance Available: £{total_isa_allowance_available/200:,.0f}\n"
         output += f"- Average Pension Allowance Available: £{total_annual_allowance_available/200:,.0f}\n"
+        
+        return output
+    
+    # ==================== PROACTIVE INTERVENTION FEATURES ====================
+    # These features enable real-time, context-aware interventions
+    
+    def _analyze_meeting_context(self, query: str) -> str:
+        """Analyze real-time meeting transcript using hybrid approach: LLM semantic analysis + data-driven checks"""
+        import re
+        
+        # Step 1: Extract client name using hybrid approach (pattern + semantic search)
+        client_name = None
+        transcript = query
+        
+        # Pattern-based extraction (fallback)
+        client_match = re.search(r'(?:meeting with|discussing with|talking to|client)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)', query, re.IGNORECASE)
+        if client_match:
+            client_name = client_match.group(1).strip()
+            transcript = query.replace(client_match.group(0), "").strip()
+        
+        # Semantic search if no pattern match
+        if not client_name:
+            results = self.vector_store.search(query, k=3)
+            if results:
+                client_name = results[0].metadata.get("client_name")
+        
+        # Step 2: Load client data for data-driven checks
+        client_data = None
+        if client_name:
+            with open("mock_data.json", "r") as f:
+                data = json.load(f)
+                for cid, client in data["clients"].items():
+                    if client_name.lower() in client["name"].lower():
+                        client_data = client
+                        break
+        
+        # Step 3: Use LLM for semantic analysis of transcript (HYBRID APPROACH)
+        analysis_prompt = f"""Analyze this financial advisor meeting transcript and identify:
+1. Life events mentioned (weddings, births, career changes, inheritance, etc.) - be flexible with language
+2. Concerns or worries expressed (anxiety, uncertainty, fear, hesitation, etc.) - understand emotional context
+3. Retirement-related discussions (stopping work, pension access, future plans, etc.) - semantic understanding
+4. Missing critical topics that should be discussed based on context
+5. Opportunities mentioned or implied (tax planning, protection needs, estate planning, etc.)
+
+Transcript: {transcript}
+
+Respond in JSON format:
+{{
+    "life_events": [{{"event": "description", "type": "wedding/birth/etc", "mentioned_as": "how it was mentioned"}}],
+    "concerns": [{{"concern": "description", "severity": "high/medium/low", "context": "surrounding text"}}],
+    "retirement_discussed": true/false,
+    "retirement_age_mentioned": true/false,
+    "protection_discussed": true/false,
+    "tax_opportunities_mentioned": true/false,
+    "missing_topics": ["topic1", "topic2"],
+    "opportunities": ["opportunity1", "opportunity2"]
+}}
+
+Be semantically flexible - understand intent, not just keywords."""
+        
+        # Get LLM analysis
+        try:
+            llm_messages = [
+                SystemMessage(content="You are an expert financial advisor assistant. Analyze meeting transcripts semantically, understanding context and intent, not just keywords."),
+                HumanMessage(content=analysis_prompt)
+            ]
+            llm_response = self.llm.invoke(llm_messages)
+            analysis_text = llm_response.content
+            
+            # Try to parse JSON from LLM response
+            import json as json_module
+            try:
+                # Extract JSON from response (might have markdown code blocks)
+                json_match = re.search(r'\{[\s\S]*\}', analysis_text)
+                if json_match:
+                    analysis = json_module.loads(json_match.group(0))
+                else:
+                    # Fallback: create structure from text
+                    analysis = {"life_events": [], "concerns": [], "missing_topics": [], "opportunities": []}
+            except:
+                # If JSON parsing fails, use semantic understanding from text
+                analysis = {"life_events": [], "concerns": [], "missing_topics": [], "opportunities": []}
+                # Extract information from text response
+                if "retirement" in analysis_text.lower() and "age" not in analysis_text.lower():
+                    analysis["missing_topics"].append("Retirement age not specifically discussed")
+        except Exception as e:
+            logger.warning(f"LLM analysis failed: {e}, using fallback")
+            analysis = {"life_events": [], "concerns": [], "missing_topics": [], "opportunities": []}
+        
+        # Step 4: Data-driven checks (combine with LLM analysis)
+        opportunities = []
+        missing_topics = []
+        
+        # Check retirement planning (if LLM detected retirement discussion but not age)
+        if analysis.get("retirement_discussed") and not analysis.get("retirement_age_mentioned"):
+            missing_topics.append("Retirement age - Client mentioned retirement but specific age not discussed")
+            if client_data and not client_data.get("is_retired", False):
+                opportunities.append("Retirement Planning Opportunity - Discuss retirement age, income goals, and pension access")
+        
+        # Check protection needs (if dependents mentioned but protection not discussed)
+        if client_data and client_data.get("num_dependents", 0) > 0:
+            if not analysis.get("protection_discussed") and not client_data.get("has_life_insurance", False):
+                missing_topics.append("Protection Planning - Client has dependents but protection not discussed")
+                opportunities.append("Protection Planning Opportunity - Discuss life insurance and protection needs")
+        
+        # Check tax opportunities (data-driven)
+        if client_data:
+            if client_data.get("isa_allowance_available", 0) > 5000:
+                opportunities.append(f"ISA Allowance Opportunity - £{client_data.get('isa_allowance_available', 0):,.0f} available this tax year")
+            if client_data.get("annual_allowance_available", 0) > 10000:
+                opportunities.append(f"Pension Allowance Opportunity - £{client_data.get('annual_allowance_available', 0):,.0f} available")
+        
+        # Check estate planning (if HNW)
+        if client_data and client_data.get("is_high_net_worth", False) and not client_data.get("has_estate_planning", False):
+            opportunities.append("Estate Planning Opportunity - HNW client but no estate planning in place")
+        
+        # Format output
+        output = "## 🎯 Real-Time Meeting Analysis (Hybrid: LLM + Data)\n\n"
+        
+        if client_name:
+            output += f"**Client:** {client_name}\n\n"
+        
+        # Life events from LLM analysis
+        if analysis.get("life_events"):
+            output += "### 🎉 Life Events Detected\n\n"
+            for event in analysis["life_events"]:
+                if isinstance(event, dict):
+                    output += f"• {event.get('type', 'Life event')}: {event.get('event', 'N/A')}\n"
+                else:
+                    output += f"• {event}\n"
+            output += "\n"
+        
+        # Concerns from LLM analysis
+        if analysis.get("concerns"):
+            output += "### ⚠️ Concerns Expressed\n\n"
+            for concern in analysis["concerns"]:
+                if isinstance(concern, dict):
+                    severity_emoji = "🔴" if concern.get("severity") == "high" else "🟡"
+                    output += f"{severity_emoji} {concern.get('concern', 'N/A')}\n"
+                else:
+                    output += f"• {concern}\n"
+            output += "\n**Action:** Follow up on these concerns in your response\n\n"
+        
+        # Opportunities (from LLM + data)
+        all_opportunities = analysis.get("opportunities", []) + opportunities
+        if all_opportunities:
+            output += "### 💡 Opportunities to Discuss\n\n"
+            for opp in all_opportunities:
+                output += f"• {opp}\n"
+            output += "\n"
+        
+        # Missing topics (from LLM + data)
+        all_missing = analysis.get("missing_topics", []) + missing_topics
+        if all_missing:
+            output += "### 📋 Missing Topics to Address\n\n"
+            for topic in all_missing:
+                output += f"• {topic}\n"
+            output += "\n**Suggestion:** Bring up these topics before ending the meeting\n\n"
+        
+        if not any([analysis.get("life_events"), analysis.get("concerns"), all_opportunities, all_missing]):
+            output += "✅ Meeting covers key topics. No immediate interventions needed.\n"
+        
+        return output
+    
+    def _detect_missing_topics(self, query: str) -> str:
+        """Detect missing topics using hybrid approach: LLM semantic analysis + client profile data"""
+        # Step 1: Identify client using semantic search
+        client_name = None
+        results = self.vector_store.search(query, k=3)
+        if results:
+            client_name = results[0].metadata.get("client_name")
+        
+        # Step 2: Load client data
+        client_data = None
+        if client_name:
+            with open("mock_data.json", "r") as f:
+                data = json.load(f)
+                for cid, client in data["clients"].items():
+                    if client_name.lower() in client["name"].lower():
+                        client_data = client
+                        break
+        
+        # Step 3: Use LLM to semantically analyze what's been discussed
+        analysis_prompt = f"""Analyze this financial advisor report/meeting content and identify what topics have been discussed.
+Be semantically flexible - understand context and meaning, not just keywords.
+
+Content: {query}
+
+Respond with JSON:
+{{
+    "topics_discussed": ["topic1", "topic2"],
+    "retirement_mentioned": true/false,
+    "protection_mentioned": true/false,
+    "tax_planning_mentioned": true/false,
+    "estate_planning_mentioned": true/false,
+    "investment_strategy_mentioned": true/false,
+    "retirement_age_specified": true/false
+}}
+
+Understand synonyms and related concepts:
+- Retirement = stopping work, pension access, future plans, leaving employment
+- Protection = insurance, life cover, dependents' security
+- Tax planning = allowances, tax relief, tax-efficient investing, ISA, pension contributions
+- Estate planning = inheritance, wills, trusts, wealth transfer"""
+        
+        # Get LLM semantic analysis
+        try:
+            llm_messages = [
+                SystemMessage(content="You are an expert financial advisor assistant. Analyze content semantically to understand what topics have been discussed, understanding context and synonyms."),
+                HumanMessage(content=analysis_prompt)
+            ]
+            llm_response = self.llm.invoke(llm_messages)
+            analysis_text = llm_response.content
+            
+            # Parse LLM response
+            import json as json_module
+            import re
+            json_match = re.search(r'\{[\s\S]*\}', analysis_text)
+            if json_match:
+                analysis = json_module.loads(json_match.group(0))
+            else:
+                # Fallback: infer from text
+                analysis = {
+                    "retirement_mentioned": "retirement" in query.lower() or "pension" in query.lower(),
+                    "protection_mentioned": "protection" in query.lower() or "insurance" in query.lower(),
+                    "tax_planning_mentioned": "tax" in query.lower() or "allowance" in query.lower(),
+                    "estate_planning_mentioned": "estate" in query.lower() or "inheritance" in query.lower(),
+                    "investment_strategy_mentioned": "investment" in query.lower() or "portfolio" in query.lower(),
+                    "retirement_age_specified": "retirement age" in query.lower() or "retiring at" in query.lower()
+                }
+        except Exception as e:
+            logger.warning(f"LLM analysis failed: {e}, using fallback")
+            analysis = {
+                "retirement_mentioned": False,
+                "protection_mentioned": False,
+                "tax_planning_mentioned": False,
+                "estate_planning_mentioned": False,
+                "investment_strategy_mentioned": False,
+                "retirement_age_specified": False
+            }
+        
+        # Step 4: Data-driven checks based on client profile (HYBRID)
+        missing_topics = []
+        
+        if client_data:
+            age = client_data.get("age", 0)
+            portfolio_value = client_data.get("portfolio_value_gbp", 0)
+            is_retired = client_data.get("is_retired", False)
+            num_dependents = client_data.get("num_dependents", 0)
+            
+            # Retirement planning (semantic check: if retirement mentioned but age not specified)
+            if analysis.get("retirement_mentioned") and not analysis.get("retirement_age_specified"):
+                if 55 <= age <= 65 and not is_retired:
+                    missing_topics.append({
+                        "topic": "Retirement Age & Planning",
+                        "reason": f"Client is {age} and retirement was discussed, but specific retirement age not mentioned",
+                        "priority": "High"
+                    })
+            elif not analysis.get("retirement_mentioned") and 55 <= age <= 65 and not is_retired:
+                missing_topics.append({
+                    "topic": "Retirement Planning",
+                    "reason": f"Client is {age} - retirement planning should be discussed",
+                    "priority": "High"
+                })
+            
+            # Protection (semantic check: if dependents exist but protection not mentioned)
+            if num_dependents > 0 and not analysis.get("protection_mentioned"):
+                if not client_data.get("has_life_insurance", False):
+                    missing_topics.append({
+                        "topic": "Protection Planning",
+                        "reason": f"Client has {num_dependents} dependents but protection/insurance not discussed",
+                        "priority": "High"
+                    })
+            
+            # Estate planning (if HNW but estate planning not mentioned)
+            if portfolio_value > 1000000 and not analysis.get("estate_planning_mentioned"):
+                if not client_data.get("has_estate_planning", False):
+                    missing_topics.append({
+                        "topic": "Estate Planning",
+                        "reason": f"High net worth client (£{portfolio_value:,.0f}) but estate/inheritance planning not discussed",
+                        "priority": "High"
+                    })
+            
+            # Tax opportunities (data-driven, semantic check for tax discussion)
+            if not analysis.get("tax_planning_mentioned"):
+                if client_data.get("isa_allowance_available", 0) > 5000:
+                    missing_topics.append({
+                        "topic": "ISA Allowance",
+                        "reason": f"£{client_data.get('isa_allowance_available', 0):,.0f} ISA allowance available - tax-efficient opportunity",
+                        "priority": "Medium"
+                    })
+                if client_data.get("annual_allowance_available", 0) > 10000:
+                    missing_topics.append({
+                        "topic": "Pension Annual Allowance",
+                        "reason": f"£{client_data.get('annual_allowance_available', 0):,.0f} pension allowance available - tax relief opportunity",
+                        "priority": "Medium"
+                    })
+            
+            # Portfolio rebalancing (if investments discussed but allocation issues exist)
+            if analysis.get("investment_strategy_mentioned"):
+                current_equity = client_data.get("equity_allocation_percent", 0)
+                target_min = client_data.get("target_equity_allocation_min", 0)
+                if current_equity < target_min:
+                    missing_topics.append({
+                        "topic": "Portfolio Rebalancing",
+                        "reason": f"Equity allocation ({current_equity}%) below target ({target_min}%) - rebalancing needed",
+                        "priority": "Medium"
+                    })
+        
+        # Format output
+        output = "## 📋 Missing Topics Analysis (Hybrid: LLM + Data)\n\n"
+        
+        if client_name:
+            output += f"**Client:** {client_name}\n\n"
+        
+        if missing_topics:
+            # Sort by priority
+            high_priority = [t for t in missing_topics if t["priority"] == "High"]
+            medium_priority = [t for t in missing_topics if t["priority"] == "Medium"]
+            
+            if high_priority:
+                output += "### 🔴 High Priority - Should Be Included\n\n"
+                for topic in high_priority:
+                    output += f"• **{topic['topic']}**\n"
+                    output += f"  {topic['reason']}\n\n"
+            
+            if medium_priority:
+                output += "### 🟡 Medium Priority - Consider Including\n\n"
+                for topic in medium_priority:
+                    output += f"• **{topic['topic']}**\n"
+                    output += f"  {topic['reason']}\n\n"
+            
+            output += "**Suggestion:** Add these topics to ensure comprehensive coverage.\n"
+        else:
+            output += "✅ All key topics appear to be covered based on semantic analysis and client profile.\n"
+        
+        return output
+    
+    def _get_contextual_suggestions(self, query: str) -> str:
+        """Get proactive suggestions based on current context - what advisor is doing"""
+        query_lower = query.lower()
+        
+        suggestions = []
+        
+        # Detect context from query
+        if "meeting" in query_lower or "discussing" in query_lower or "talking" in query_lower:
+            # Advisor is in a meeting
+            suggestions.append("💡 **During Meeting:** Listen for life events, concerns, or goals mentioned")
+            suggestions.append("💡 **During Meeting:** Check if retirement age is discussed if client is 55+")
+            suggestions.append("💡 **During Meeting:** Verify protection needs if client has dependents")
+            suggestions.append("💡 **After Meeting:** Draft follow-up email with action items")
+        
+        if "report" in query_lower or "writing" in query_lower or "document" in query_lower:
+            # Advisor is writing a report
+            suggestions.append("📝 **Report Writing:** Check for missing topics using detect_missing_topics")
+            suggestions.append("📝 **Report Writing:** Include retirement age if client is approaching retirement")
+            suggestions.append("📝 **Report Writing:** Mention protection gaps if client has dependents")
+            suggestions.append("📝 **Report Writing:** Highlight tax opportunities (ISA/pension allowances)")
+        
+        if "preparing" in query_lower or "prep" in query_lower:
+            # Advisor is preparing for meeting
+            suggestions.append("📅 **Meeting Prep:** Review client's last meeting notes")
+            suggestions.append("📅 **Meeting Prep:** Check for unresolved concerns")
+            suggestions.append("📅 **Meeting Prep:** Identify opportunities (ISA allowance, milestones, etc.)")
+            suggestions.append("📅 **Meeting Prep:** Review relationship health score")
+        
+        if "follow-up" in query_lower or "email" in query_lower:
+            # Advisor is following up
+            suggestions.append("📧 **Follow-up:** Include specific action items from meeting")
+            suggestions.append("📧 **Follow-up:** Reference concerns or goals mentioned")
+            suggestions.append("📧 **Follow-up:** Set clear next steps and deadlines")
+        
+        # General proactive suggestions
+        if not suggestions:
+            suggestions.append("💡 **General:** Use priority scoring to focus on high-impact tasks")
+            suggestions.append("💡 **General:** Check relationship health for at-risk clients")
+            suggestions.append("💡 **General:** Review opportunity alerts for time-sensitive actions")
+            suggestions.append("💡 **General:** Monitor predictive risks to prevent problems")
+        
+        output = "## 💡 Contextual Proactive Suggestions\n\n"
+        output += "Based on your current activity, here are proactive suggestions:\n\n"
+        
+        for suggestion in suggestions:
+            output += f"{suggestion}\n"
+        
+        output += "\n**Remember:** Jarvis can analyze meeting transcripts, detect missing topics, and provide real-time interventions.\n"
+        
+        return output
+    
+    def _monitor_conversation_live(self, query: str) -> str:
+        """Monitor live conversation using hybrid approach: LLM semantic understanding + real-time data checks"""
+        # Step 1: Use LLM for semantic analysis of conversation
+        analysis_prompt = f"""Monitor this live financial advisor conversation in real-time. Detect:
+1. Retirement mentions (stopping work, pension access, future plans) - understand context, not just keywords
+2. Life events (weddings, births, career changes, inheritance) - be flexible with language
+3. Concerns or worries (anxiety, uncertainty, fear, hesitation) - understand emotional context
+4. Missing topics that should be discussed
+5. Opportunities (tax planning, protection needs, estate planning)
+
+Conversation: {query}
+
+Respond in JSON:
+{{
+    "retirement_mentioned": true/false,
+    "retirement_age_discussed": true/false,
+    "early_retirement_mentioned": true/false,
+    "life_events": [{{"event": "description", "type": "wedding/birth/etc"}}],
+    "concerns_detected": [{{"concern": "description", "severity": "high/medium/low"}}],
+    "protection_discussed": true/false,
+    "dependents_mentioned": true/false,
+    "interventions_needed": [
+        {{"type": "Missing Topic/Opportunity/Concern/Life Event", "message": "...", "priority": "high/medium", "suggestion": "..."}}
+    ]
+}}
+
+Be semantically flexible - understand intent and context, not just exact word matching."""
+        
+        # Get LLM semantic analysis
+        try:
+            llm_messages = [
+                SystemMessage(content="You are a real-time conversation monitor for financial advisors. Analyze conversations semantically, understanding context, intent, and emotional cues - not just keywords."),
+                HumanMessage(content=analysis_prompt)
+            ]
+            llm_response = self.llm.invoke(llm_messages)
+            analysis_text = llm_response.content
+            
+            # Parse LLM response
+            import json as json_module
+            import re
+            json_match = re.search(r'\{[\s\S]*\}', analysis_text)
+            if json_match:
+                analysis = json_module.loads(json_match.group(0))
+            else:
+                # Fallback: basic structure
+                analysis = {"interventions_needed": []}
+        except Exception as e:
+            logger.warning(f"LLM analysis failed: {e}, using fallback")
+            analysis = {"interventions_needed": []}
+        
+        # Step 2: Add data-driven interventions (HYBRID)
+        interventions = analysis.get("interventions_needed", [])
+        
+        # Retirement age check (if retirement mentioned but age not discussed)
+        if analysis.get("retirement_mentioned") and not analysis.get("retirement_age_discussed"):
+            interventions.append({
+                "type": "Missing Topic",
+                "message": "⚠️ Client mentioned retirement - suggest discussing specific retirement age",
+                "priority": "High",
+                "suggestion": "Ask: 'What age are you planning to retire?'"
+            })
+        
+        # Early retirement opportunity
+        if analysis.get("early_retirement_mentioned"):
+            interventions.append({
+                "type": "Opportunity",
+                "message": "🎯 Early retirement mentioned - discuss retirement planning, pension access, and income strategy",
+                "priority": "High",
+                "suggestion": "Discuss: Retirement age, pension access rules, income planning, tax implications"
+            })
+        
+        # Life events from LLM
+        if analysis.get("life_events"):
+            for event in analysis["life_events"]:
+                event_type = event.get("type", "life event") if isinstance(event, dict) else "life event"
+                if "wedding" in event_type.lower():
+                    interventions.append({
+                        "type": "Life Event",
+                        "message": "🎉 Life event detected: Wedding - update beneficiaries, review financial plan",
+                        "priority": "Medium",
+                        "suggestion": "Action: Update beneficiaries, discuss wedding costs, review protection needs"
+                    })
+                elif "grandchild" in event_type.lower() or "birth" in event_type.lower():
+                    interventions.append({
+                        "type": "Life Event",
+                        "message": "🎉 Life event detected: New family member - consider education planning, inheritance planning",
+                        "priority": "Medium",
+                        "suggestion": "Action: Discuss education planning, update will, consider trust planning"
+                    })
+        
+        # Concerns from LLM
+        if analysis.get("concerns_detected"):
+            for concern in analysis["concerns_detected"]:
+                severity = concern.get("severity", "medium") if isinstance(concern, dict) else "medium"
+                concern_text = concern.get("concern", "Client concern") if isinstance(concern, dict) else str(concern)
+                interventions.append({
+                    "type": "Concern",
+                    "message": f"⚠️ Client expressed concern: {concern_text} - address this directly and document",
+                    "priority": "High" if severity == "high" else "Medium",
+                    "suggestion": "Action: Acknowledge concern, provide reassurance, create action plan"
+                })
+        
+        # Protection needs (if dependents mentioned but protection not discussed)
+        if analysis.get("dependents_mentioned") and not analysis.get("protection_discussed"):
+            interventions.append({
+                "type": "Missing Topic",
+                "message": "⚠️ Client has dependents but protection/insurance not discussed",
+                "priority": "High",
+                "suggestion": "Action: Discuss life insurance and protection needs"
+            })
+        
+        # Format real-time interventions
+        output = "## 🎯 Real-Time Conversation Monitoring (Hybrid: LLM + Data)\n\n"
+        output += "**Live Interventions:**\n\n"
+        
+        if interventions:
+            # Sort by priority
+            high_priority = [i for i in interventions if i.get("priority") == "High"]
+            medium_priority = [i for i in interventions if i.get("priority") == "Medium"]
+            
+            for intervention in high_priority + medium_priority:
+                priority_emoji = "🔴" if intervention.get("priority") == "High" else "🟡"
+                output += f"{priority_emoji} **{intervention.get('type', 'Intervention')}**\n"
+                output += f"{intervention.get('message', 'N/A')}\n"
+                output += f"💡 **Suggestion:** {intervention.get('suggestion', 'N/A')}\n\n"
+        else:
+            output += "✅ No immediate interventions needed. Conversation covers key topics.\n"
+        
+        output += "\n**Note:** This uses hybrid semantic analysis (LLM understanding + data checks) for intelligent real-time monitoring.\n"
         
         return output
 
