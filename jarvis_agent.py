@@ -1515,42 +1515,86 @@ ALWAYS prioritize proactive insights over reactive answers!""")
     # Follow-up and actions tools
     def _draft_follow_up_email(self, query: str) -> str:
         """Draft follow-up email"""
-        # Extract client name and meeting date from query
-        # Use search to find recent meeting
-        results = self.vector_store.search(query, k=3)
+        # Extract client name from query
+        import re
+        client_match = re.search(r'(\w+\s+\w+)', query)
+        client_name = None
         
-        if not results:
-            return "Could not find meeting details. Please specify the client name and meeting date."
+        # Try to find client name in query
+        if client_match:
+            potential_name = client_match.group(1)
+            # Use search to find the client
+            results = self.vector_store.search(query, k=5)
+            if results:
+                client_name = results[0].metadata.get("client_name", potential_name)
         
-        # Get most recent meeting
-        meeting_doc = results[0]
-        client_name = meeting_doc.metadata.get("client_name", "Client")
-        date = meeting_doc.metadata.get("date", "recent")
+        # If no client found, try to extract from query more directly
+        if not client_name:
+            # Try searching for "yesterday's meeting" or similar
+            results = self.vector_store.search(query, k=5)
+            if results:
+                client_name = results[0].metadata.get("client_name")
         
-        # Extract action items from meeting
+        if not client_name:
+            return "Could not identify the client. Please specify the client name (e.g., 'Draft follow-up email for John Smith')."
+        
+        # Find the most recent meeting for this client
         with open("mock_data.json", "r") as f:
             data = json.load(f)
         
-        actions = []
+        # Get all meetings for this client, sorted by date (most recent first)
+        client_meetings = []
         for meeting in data.get("meetings", []):
-            if meeting["client_name"] == client_name and meeting["date"] == date:
-                actions = meeting.get("action_items", [])
-                break
+            if client_name.lower() in meeting["client_name"].lower() or meeting["client_name"].lower() in client_name.lower():
+                client_meetings.append(meeting)
         
+        if not client_meetings:
+            return f"Could not find any meetings for {client_name}. Please check the client name."
+        
+        # Sort by date (most recent first)
+        from datetime import datetime
+        client_meetings.sort(key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d"), reverse=True)
+        most_recent_meeting = client_meetings[0]
+        
+        meeting_date = most_recent_meeting["date"]
+        actions = most_recent_meeting.get("action_items", [])
+        meeting_type = most_recent_meeting.get("type", "meeting")
+        
+        # Format the date nicely
+        try:
+            date_obj = datetime.strptime(meeting_date, "%Y-%m-%d")
+            formatted_date = date_obj.strftime("%B %d, %Y")
+        except:
+            formatted_date = meeting_date
+        
+        # Get first name
+        first_name = client_name.split()[0] if client_name else "Client"
+        
+        # Draft the email
         response = f"Draft Follow-up Email\n"
-        response += "=" * 50 + "\n\n"
+        response += "=" * 60 + "\n\n"
         response += f"To: {client_name}\n"
-        response += f"Subject: Follow-up from our meeting on {date}\n\n"
-        response += f"Dear {client_name.split()[0]},\n\n"
-        response += "Thank you for taking the time to meet with me on {date}. I wanted to follow up on our discussion.\n\n"
+        response += f"Subject: Follow-up from our {meeting_type} on {formatted_date}\n\n"
+        response += f"Dear {first_name},\n\n"
+        response += f"Thank you for taking the time to meet with me on {formatted_date}. I wanted to follow up on our discussion.\n\n"
         
         if actions:
             response += "Key Actions Agreed:\n"
             for action in actions[:5]:
-                response += f"• {action.get('action', '')} (Due: {action.get('due_date', 'TBD')})\n"
+                action_text = action.get('action', '')
+                due_date = action.get('due_date', 'TBD')
+                response += f"• {action_text} (Due: {due_date})\n"
             response += "\n"
+        else:
+            # If no specific actions, mention the meeting topics
+            topics = most_recent_meeting.get("topics_discussed", [])
+            if topics:
+                response += "As discussed, we covered the following topics:\n"
+                for topic in topics[:3]:
+                    response += f"• {topic}\n"
+                response += "\n"
         
-        response += "Please don't hesitate to reach out if you have any questions.\n\n"
+        response += "Please don't hesitate to reach out if you have any questions or if you'd like to discuss anything further.\n\n"
         response += "Best regards,\n"
         response += "[Your Name]"
         
