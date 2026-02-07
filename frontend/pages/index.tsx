@@ -14,32 +14,40 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [briefing, setBriefing] = useState<any>(null);
 
-  const sendMessage = async () => {
-    if (!message.trim()) return;
-    
-    const userMessage = { role: 'user', content: message };
-    setMessages(prev => [...prev, userMessage]);
-    setMessage('');
-    setLoading(true);
+    const sendMessage = async () => {
+        if (!message.trim()) return;
+        
+        const userMessage = { role: 'user', content: message };
+        setMessages(prev => [...prev, userMessage]);
+        const currentMessage = message;
+        setMessage('');
+        setLoading(true);
 
-    try {
-      const response = await axios.post(`${API_URL}/api/chat`, {
-        message: userMessage.content
-      });
-      
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: response.data.response
-      }]);
-    } catch (error: any) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `Error: ${error.response?.data?.detail || error.message}`
-      }]);
-    } finally {
-      setLoading(false);
-    }
-  };
+        try {
+            // Send conversation history for context
+            const conversationHistory = messages.map(msg => ({
+                role: msg.role,
+                content: msg.content
+            }));
+            
+            const response = await axios.post(`${API_URL}/api/chat`, {
+                message: currentMessage,
+                conversation_history: conversationHistory
+            });
+            
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: response.data.response
+            }]);
+        } catch (error: any) {
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: `Error: ${error.response?.data?.detail || error.message}`
+            }]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
   const loadBriefing = async () => {
     setLoading(true);
