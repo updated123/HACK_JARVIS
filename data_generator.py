@@ -76,17 +76,35 @@ def generate_client_profile(client_id: int) -> Dict:
     is_milestone = age + (1 if days_to_birthday < 365 else 0) in [50, 55, 60, 65, 70, 75]
     
     # Last contact date (some clients haven't been contacted recently)
-    days_since_contact = random.choices(
-        [30, 60, 90, 120, 180, 365],
-        weights=[20, 20, 15, 15, 15, 15]  # Some clients are overdue
-    )[0]
+    # Generate more varied contact dates
+    contact_distribution = random.random()
+    if contact_distribution < 0.30:  # 30% - recent contact (within last month)
+        days_since_contact = random.randint(1, 30)
+    elif contact_distribution < 0.55:  # 25% - recent (1-2 months)
+        days_since_contact = random.randint(30, 60)
+    elif contact_distribution < 0.70:  # 15% - moderate (2-3 months)
+        days_since_contact = random.randint(60, 90)
+    elif contact_distribution < 0.85:  # 15% - overdue (3-6 months)
+        days_since_contact = random.randint(90, 180)
+    else:  # 15% - significantly overdue (6+ months)
+        days_since_contact = random.randint(180, 365)
+    
     last_contact = datetime.now() - timedelta(days=days_since_contact)
     
-    # Last annual review
-    days_since_review = random.choices(
-        [180, 270, 330, 365, 400, 450],
-        weights=[10, 10, 20, 30, 20, 10]  # Some reviews are due/overdue
-    )[0]
+    # Last annual review - more varied dates
+    # Generate a more realistic distribution with more variation
+    review_distribution = random.random()
+    if review_distribution < 0.15:  # 15% - recent reviews (within last 6 months)
+        days_since_review = random.randint(30, 180)
+    elif review_distribution < 0.35:  # 20% - approaching due (6-11 months)
+        days_since_review = random.randint(180, 330)
+    elif review_distribution < 0.65:  # 30% - just due or slightly overdue (11-13 months)
+        days_since_review = random.randint(330, 400)
+    elif review_distribution < 0.85:  # 20% - moderately overdue (13-18 months)
+        days_since_review = random.randint(400, 550)
+    else:  # 15% - significantly overdue (18+ months)
+        days_since_review = random.randint(550, 730)
+    
     last_review = datetime.now() - timedelta(days=days_since_review)
     
     # Generate products
