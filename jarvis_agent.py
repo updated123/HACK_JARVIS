@@ -184,7 +184,7 @@ class JarvisAgent:
             make_no_param_tool(lambda: self._get_predictive_risk_detection(""), "get_predictive_risks", "Get predictive risk analysis across all clients"),
             make_no_param_tool(lambda: self._get_contextual_morning_briefing(""), "get_contextual_briefing", "Get personalized contextual morning briefing"),
             make_no_param_tool(lambda: self._get_client_clusters(""), "get_client_clusters", "Get client clusters and pattern recognition"),
-            make_no_param_tool(lambda: self._get_value_demonstration_summary(""), "get_value_summary", "Get value demonstration summary showing delivered value")
+            make_no_param_tool(lambda: self._get_value_demonstration_summary(""), "get_value_summary", "Get value demonstration summary showing tax savings, ISA/pension allowances, risk mitigation, and total value delivered to clients")
         ]
         
         # Create tool node if available, otherwise use custom implementation
@@ -435,7 +435,7 @@ PROACTIVE INTELLIGENCE FEATURES (NEW):
 4. Predictive Risks: get_predictive_risks - Identifies problems before they become critical. Use for "risks" or "potential problems"
 5. Contextual Briefing: get_contextual_briefing - Personalized morning briefing with top priorities. Use for "morning briefing" or "what should I do today"
 6. Client Clusters: get_client_clusters - Groups similar clients and identifies patterns. Use for "similar clients" or "patterns"
-7. Value Summary: get_value_summary - Quantifies value delivered to clients. Use for "value delivered" or "demonstrate value"
+7. Value Summary: get_value_summary - Quantifies value delivered to clients including tax savings, ISA/pension allowances, risk mitigation. Use for "value delivered", "demonstrate value", "tax savings", "show me tax savings", "value I've delivered"
 
 When to use proactive features:
 - Advisor asks "what should I focus on" → Use get_priority_scored_opportunities
@@ -444,7 +444,7 @@ When to use proactive features:
 - Advisor asks "what risks" → Use get_predictive_risks
 - Advisor asks "morning briefing" → Use get_contextual_briefing
 - Advisor asks "show me patterns" → Use get_client_clusters
-- Advisor asks "value delivered" → Use get_value_summary
+- Advisor asks "value delivered", "tax savings", "show me tax savings", "value I've identified" → Use get_value_summary
 
 ALWAYS prioritize proactive insights over reactive answers!""")
         
@@ -2011,6 +2011,12 @@ ALWAYS prioritize proactive insights over reactive answers!""")
         elif "concern" in query_lower and ("unresolved" in query_lower or "client" in query_lower):
             logger.info("Executing: get_unresolved_concerns")
             return self._get_unresolved_concerns("")
+        elif "tax savings" in query_lower or ("tax" in query_lower and "savings" in query_lower):
+            logger.info("Executing: get_value_summary")
+            return self._get_value_demonstration_summary("")
+        elif "value" in query_lower and ("delivered" in query_lower or "demonstrate" in query_lower or "identified" in query_lower or "created" in query_lower):
+            logger.info("Executing: get_value_summary")
+            return self._get_value_demonstration_summary("")
         else:
             # Try search as last resort
             logger.info("No direct match - trying search_clients")
